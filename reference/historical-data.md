@@ -38,24 +38,49 @@
 **文件内容示例**：
 ```json
 {
-  "version": "1.0",
+  "version": "2.0",
   "last_updated": "2026-05-03T18:30:00",
   "summaries": [
     {
       "date": "2026-05-03",
       "file_path": "2026-05/2026-05-03/summary_2026-05-03.md",
       "funds_mentioned": ["003984", "005827", "006567"],
-      "key_events": ["央行降准", "宁德时代财报"]
+      "key_events": ["央行降准", "宁德时代财报"],
+      "tags": ["新能源", "货币政策", "季报", "降准"],
+      "sentiment_index": {
+        "003984": 74,
+        "005827": 62,
+        "overall": 68
+      },
+      "has_prediction": true,
+      "has_position_advice": true
     },
     {
       "date": "2026-04-26",
       "file_path": "2026-04/2026-04-26/summary_2026-04-26.md",
       "funds_mentioned": ["003984", "005827"],
-      "key_events": ["新能源政策", "白酒消费税"]
+      "key_events": ["新能源政策", "白酒消费税"],
+      "tags": ["新能源", "消费税", "产业政策", "白酒"],
+      "sentiment_index": {
+        "003984": 81,
+        "005827": 55,
+        "overall": 68
+      },
+      "has_prediction": false,
+      "has_position_advice": true
     }
   ]
 }
 ```
+
+**新增字段说明**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `tags` | string[] | 该日归档涉及的关键主题标签，用于跨日期主题搜索 |
+| `sentiment_index` | object | 各基金当日舆情指数（0-100），以及整体均值 |
+| `has_prediction` | bool | 该日 summary 是否包含走势预测报告 |
+| `has_position_advice` | bool | 该日 summary 是否包含仓位决策建议 |
 
 **读取方法**：
 ```python
@@ -515,6 +540,51 @@ print(f"近30天净值数据：{len(nav_trend)}条记录")
 
 ---
 
-**版本**：v1.0  
-**最后更新**：2026-05-05  
+## 🔍 按标签跨日期查询
+
+利用 `index.json` 中新增的 `tags` 字段，可以快速回答"过去3个月有哪些关于储能政策的新闻"类问题：
+
+```python
+def search_by_tag(tag, index, days=90):
+    """
+    按标签搜索历史归档
+    
+    Args:
+        tag: 搜索标签（如"储能政策"、"碳酸锂"、"降准"）
+        index: 已加载的 index.json 内容
+        days: 搜索最近N天
+    
+    Returns:
+        list of matching summary metadata
+    """
+    cutoff_date = datetime.now() - timedelta(days=days)
+    results = []
+    
+    for summary in index['summaries']:
+        summary_date = datetime.strptime(summary['date'], '%Y-%m-%d')
+        if summary_date < cutoff_date:
+            continue
+        # 模糊匹配标签
+        if any(tag in t for t in summary.get('tags', [])):
+            results.append(summary)
+    
+    return sorted(results, key=lambda x: x['date'], reverse=True)
+
+# 使用示例
+results = search_by_tag("储能", index, days=90)
+print(f"近3个月含'储能'标签的归档：{len(results)} 条")
+for r in results:
+    print(f"  {r['date']} - {r['key_events']}")
+```
+
+**标签规范**：归档时标签应使用简短关键词，常用标签示例：
+- 行业类：`新能源`、`白酒`、`半导体`、`医疗`
+- 事件类：`季报`、`财报`、`分红`、`调仓`
+- 政策类：`降准`、`产业政策`、`消费税`
+- 宏观类：`GDP`、`CPI`、`货币政策`
+
+---
+
+**版本**：v2.0  
+**最后更新**：2026-05-07  
 **维护者**：NagaResst
