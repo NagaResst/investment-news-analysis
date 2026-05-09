@@ -3,7 +3,7 @@
 ## 📂 完整目录结构
 
 ```
-日常工作流/投资新闻归档/
+投资新闻归档/
 ├── README.md                          # 系统说明文档
 ├── index.json                         # 索引文件（核心）
 │
@@ -49,7 +49,7 @@
 
 ### 1. index.json（索引文件）
 
-**位置**：`日常工作流/投资新闻归档/index.json`
+**位置**：`投资新闻归档/index.json`
 
 **作用**：
 - 记录所有 summary 文件的元数据
@@ -114,7 +114,7 @@
 
 ### 2. summary_YYYY-MM-DD.md（每日汇总报告）
 
-**位置**：`日常工作流/投资新闻归档/YYYY-MM/DD/YYYY-MM-DD/summary_YYYY-MM-DD.md`
+**位置**：`投资新闻归档/YYYY-MM/DD/YYYY-MM-DD/summary_YYYY-MM-DD.md`
 
 **作用**：
 - 汇总当日所有重要信息
@@ -287,7 +287,7 @@
 
 ### 3. item_summaries/（单条信息摘要）
 
-**位置**：`日常工作流/投资新闻归档/YYYY-MM/DD/YYYY-MM-DD/item_summaries/`
+**位置**：`投资新闻归档/YYYY-MM/DD/YYYY-MM-DD/item_summaries/`
 
 **作用**：
 - 存储每条高/中关联信息的独立摘要
@@ -357,7 +357,7 @@
 
 ### 4. raw_data/（原始数据）
 
-**位置**：`日常工作流/投资新闻归档/YYYY-MM/DD/YYYY-MM-DD/raw_data/`
+**位置**：`投资新闻归档/YYYY-MM/DD/YYYY-MM-DD/raw_data/`
 
 **作用**：
 - 存储API返回的原始JSON数据
@@ -557,9 +557,9 @@ stocks/{股票名称}.json
 
 1. **创建当日目录**
    ```bash
-   mkdir -p "日常工作流/投资新闻归档/2026-05/2026-05-04"
-   mkdir -p "日常工作流/投资新闻归档/2026-05/2026-05-04/item_summaries"
-   mkdir -p "日常工作流/投资新闻归档/2026-05/2026-05-04/raw_data/stocks"
+   mkdir -p "投资新闻归档/2026-05/2026-05-04"
+   mkdir -p "投资新闻归档/2026-05/2026-05-04/item_summaries"
+   mkdir -p "投资新闻归档/2026-05/2026-05-04/raw_data/stocks"
    ```
 
 2. **搜索并保存数据**
@@ -641,10 +641,10 @@ if path:
 **方法**：
 ```bash
 # Linux/Mac
-grep -r "宁德时代" "日常工作流/投资新闻归档/2026-05/" --include="*.md"
+grep -r "宁德时代" "投资新闻归档/2026-05/" --include="*.md"
 
 # Windows PowerShell
-Select-String -Path "日常工作流\投资新闻归档\2026-05\*.md" -Pattern "宁德时代"
+Select-String -Path "投资新闻归档\2026-05\*.md" -Pattern "宁德时代"
 ```
 
 ### 3. 通过原始数据分析
@@ -657,7 +657,7 @@ import json
 import glob
 
 # 读取某段时间的所有基金数据
-files = glob.glob("日常工作流/投资新闻归档/2026-04/*/raw_data/fund_003984_*.json")
+files = glob.glob("投资新闻归档/2026-04/*/raw_data/fund_003984_*.json")
 
 all_data = []
 for file in files:

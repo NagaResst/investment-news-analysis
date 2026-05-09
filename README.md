@@ -60,7 +60,7 @@ investment-news-analysis/
 
 默认归档位置：
 ```
-日常工作流/投资新闻归档/
+投资新闻归档/
 ```
 
 如需修改，请编辑 `SKILL.md` 中的路径配置。
@@ -69,7 +69,7 @@ investment-news-analysis/
 
 建议每天收盘后提交一次：
 ```bash
-git add "日常工作流/投资新闻归档"
+git add "投资新闻归档"
 git commit -m "feat: 完成YYYY-MM-DD投资新闻归档"
 ```
 

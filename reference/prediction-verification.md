@@ -97,7 +97,7 @@
 ```python
 import json
 
-def find_predictions(fund_code, archive_root="日常工作流/投资新闻归档"):
+def find_predictions(fund_code, archive_root="投资新闻归档"):
     """找到指定基金的所有预测记录"""
     index_path = f"{archive_root}/index.json"
     with open(index_path, 'r', encoding='utf-8') as f:
@@ -191,7 +191,7 @@ print(prediction)
 
 **查找逻辑**：
 ```python
-def get_actual_result(fund_code, verify_date, archive_root="日常工作流/投资新闻归档"):
+def get_actual_result(fund_code, verify_date, archive_root="投资新闻归档"):
     """获取验证日期的实际结果"""
     index_path = f"{archive_root}/index.json"
     with open(index_path, 'r', encoding='utf-8') as f:
@@ -535,7 +535,7 @@ import os
 from datetime import datetime
 
 class PredictionVerifier:
-    def __init__(self, archive_root="日常工作流/投资新闻归档"):
+    def __init__(self, archive_root="投资新闻归档"):
         self.archive_root = archive_root
         
     def verify_all_predictions(self, fund_code, months=6):

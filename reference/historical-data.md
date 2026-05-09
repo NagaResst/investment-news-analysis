@@ -15,7 +15,7 @@
 ### 主要文件位置
 
 ```
-日常工作流/投资新闻归档/
+投资新闻归档/
 ├── index.json                    # 索引文件（入口）
 ├── 2026-04/                      # 按月归档
 │   └── 2026-04-26/              # 按日归档
@@ -33,7 +33,7 @@
 
 ### 步骤一：读取 index.json
 
-**文件位置**：`日常工作流/投资新闻归档/index.json`
+**文件位置**：`投资新闻归档/index.json`
 
 **文件内容示例**：
 ```json
@@ -86,7 +86,7 @@
 ```python
 import json
 
-with open('日常工作流/投资新闻归档/index.json', 'r', encoding='utf-8') as f:
+with open('投资新闻归档/index.json', 'r', encoding='utf-8') as f:
     index = json.load(f)
     
 # 获取所有 summary 列表
@@ -132,7 +132,7 @@ recent_summaries = fund_summaries[:10]
 **读取单个 Summary**：
 ```python
 def read_summary(file_path):
-    full_path = f"日常工作流/投资新闻归档/{file_path}"
+    full_path = f"投资新闻归档/{file_path}"
     with open(full_path, 'r', encoding='utf-8') as f:
         return f.read()
 
@@ -422,7 +422,7 @@ def is_already_archived(news_title, archive_dir):
     return False
 
 # 搜索前先检查
-if not is_already_archived("宁德时代Q1财报", "日常工作流/投资新闻归档/2026-04/2026-04-26"):
+if not is_already_archived("宁德时代Q1财报", "投资新闻归档/2026-04/2026-04-26"):
     # 执行搜索
     search_news("宁德时代 Q1 财报")
 else:
@@ -476,7 +476,7 @@ import os
 from datetime import datetime, timedelta
 
 class HistoryDataExtractor:
-    def __init__(self, archive_root="日常工作流/投资新闻归档"):
+    def __init__(self, archive_root="投资新闻归档"):
         self.archive_root = archive_root
         
     def load_index(self):
