@@ -16,6 +16,24 @@
 
 > 本节约束日报中**「短期预测」章节**和**「历史预测验证」章节**的写法，与下方的中长期验证流程相互独立。
 
+### 规则零：预测前必须通过信息充分性检查
+
+任何方向性预测都必须先确认信息足够，而不是为了“给答案”硬写结论。
+
+**最低要求**：
+- 必须有基金自身行为数据：最新净值、近1月表现、相对基准超额、近期回撤或浮盈浮亏
+- 必须有市场环境数据：成交活跃度、北向/市场量级、相关 ETF 资金流或溢价率
+- 必须有行业/政策或重仓股证据：至少 1 条正式信息支撑主线判断
+- 必须有反向证据、风险证据或明确数据缺口：禁止只列利多
+- 必须完成至少 1 组横向比较：与代理基准或同类基金比较强弱
+
+**处理规则**：
+- 前三项缺任一项：不得输出方向性预测
+- 第四项缺失：视为只报喜不报忧，报告失效
+- 第五项缺失：不得输出高置信度预测，只能保守记录
+- 若缺少至少 2 条彼此独立的证据（1 条近 7 天量化/净值/市场数据 + 1 条近 30 天政策/产业/重仓股/需求侧信息），不得输出高置信度预测
+- 若主要证据都来自同一来源改写或明显过旧，不视为信息充分
+
 ### 规则一：每日日报必须包含「短期预测」章节
 
 每份 summary 的**末尾**（数据来源之后）必须包含以下格式的「短期预测」章节，作为后续报告验证的来源：
@@ -36,7 +54,7 @@
 **要求**：
 - 每条预测必须有**明确方向**（⬆️ 偏强上涨 / ⬇️ 偏弱下跌 / ➡️ 震荡）
 - 必须有**预计净值区间**（而非只写方向）
-- 必须有**1-2句依据**
+- 必须有**1-2句依据**，且依据中至少包含一条支持证据和一条风险/反向证据或失效条件
 - 至少覆盖主要持仓基金（嘉实新能源新材料A(003984)、易方达科创50联接C(011609)、财通新视野灵活配置A(005851)、华商新趋势优选(166301)）
 - 记录**预测日期**，供后续验证时追溯
 
@@ -90,7 +108,7 @@
 
 **定位方法**：
 1. 从 index.json 中找到包含预测的 summary
-2. 筛选出有"预测报告"或"走势预测"章节的记录
+2. 筛选出有 `## 短期预测` 章节的记录
 3. 按时间排序，找出需要验证的预测
 
 **示例**：
@@ -109,8 +127,8 @@ def find_predictions(fund_code, archive_root="投资新闻归档"):
             file_path = f"{archive_root}/{summary['file_path']}"
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
-                # 查找预测章节
-                if "## 📈 走势预测" in content or "## 预测报告" in content:
+                # 查找短期预测章节
+                if "## 短期预测" in content:
                     predictions.append({
                         'date': summary['date'],
                         'file_path': summary['file_path'],
@@ -132,21 +150,11 @@ print(f"找到 {len(predictions)} 条预测记录")
 
 **预测内容结构**：
 ```markdown
-## 📈 走势预测
+## 短期预测（1-4周）
 
-### 短期预测（1-3个月）
-- **预测方向**：⬆️ 上涨
-- **目标价位**：3.60元
-- **概率分布**：上涨70%，震荡20%，下跌10%
-- **置信度**：高
-- **预测日期**：2026-04-26
-- **验证日期**：2026-05-26（预计）
-
-### 中期预测（3-6个月）
-- **预测方向**：➡️ 震荡上行
-- **目标价位**：3.80元
-- **概率分布**：上涨60%，震荡30%，下跌10%
-- **置信度**：中
+| 编号 | 基金 | 预测方向 | 预计区间 | 依据摘要 | 预测日期 |
+|------|------|---------|---------|---------|---------|
+| S1 | 嘉实新能源新材料A(003984) | ⬇️ 震荡偏弱 | 3.20-3.40 | 新催化不足是支持证据，但板块回撤已大、若政策超预期则预测失效 | 2026-04-26 |
 ```
 
 **提取方法**：
@@ -155,32 +163,24 @@ import re
 
 def extract_prediction(content, fund_code):
     """从 summary 中提取预测信息"""
-    prediction_data = {}
-    
-    # 提取短期预测
-    short_term_pattern = r"### 短期预测.*?预测方向[：:]([^\n]+).*?目标价位[：:]([\d.]+)元.*?概率分布[：:]([^ \n]+).*?置信度[：:]([^ \n]+)"
-    match = re.search(short_term_pattern, content, re.DOTALL)
-    if match:
-        prediction_data['short_term'] = {
-            'direction': match.group(1).strip(),
-            'target_price': float(match.group(2)),
-            'probability': match.group(3).strip(),
-            'confidence': match.group(4).strip()
-        }
-    
-    # 提取预测日期和验证日期
-    date_pattern = r"预测日期[：:](\d{4}-\d{2}-\d{2}).*?验证日期[：:](\d{4}-\d{2}-\d{2})"
-    date_match = re.search(date_pattern, content)
-    if date_match:
-        prediction_data['predict_date'] = date_match.group(1)
-        prediction_data['verify_date'] = date_match.group(2)
-    
-    return prediction_data
+    pattern = rf"\|\s*(S\d+)\s*\|\s*([^|]*{re.escape(fund_code)}[^|]*)\|\s*([^|]+)\|\s*([^|]+)\|\s*([^|]+)\|\s*(\d{{4}}-\d{{2}}-\d{{2}})\s*\|"
+    match = re.search(pattern, content)
+    if not match:
+        return None
+
+    return {
+        'id': match.group(1).strip(),
+        'fund': match.group(2).strip(),
+        'direction': match.group(3).strip(),
+        'range': match.group(4).strip(),
+        'reason': match.group(5).strip(),
+        'predict_date': match.group(6).strip(),
+    }
 
 # 使用
 prediction = extract_prediction(content, "003984")
 print(prediction)
-# {'short_term': {'direction': '⬆️ 上涨', 'target_price': 3.6, ...}}
+# {'id': 'S1', 'fund': '嘉实新能源新材料A(003984)', 'direction': '⬇️ 震荡偏弱', ...}
 ```
 
 ---
