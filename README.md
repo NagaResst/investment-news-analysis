@@ -93,7 +93,7 @@ summary_2026-04-26.md
 
 持仓分析与建议阶段只输出 HTML 页面：
 ```
-投资者行动/持仓分析与建议/web/投资建议报告_YYYYMMDD.html
+投资者行动/持仓分析与建议/投资建议报告_YYYYMMDD.html
 ```
 
 其中每日日报 `summary_YYYY-MM-DD.md` 保持 Markdown 输出，不生成 HTML。
