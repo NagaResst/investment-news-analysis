@@ -67,21 +67,21 @@ HTML 投资建议报告的结构、写法与组件规范。
 
 ## 阶段一：定量数据与历史上下文
 
-### A. 先准备当天 `finance_news.json`
+### A. 读取历史数据
 
-先确保当天目录下已经有：
+搜索前必须读取：
 
-`投资新闻归档/YYYY-MM/YYYY-MM-DD/raw_data/finance_news.json`
+1. `投资新闻归档/index.json`
+2. 与当前持仓相关的近期 summary
+3. `投资者行动/持仓情况.md`
 
-这是当天搜索的第一输入，默认由 `scripts/cn_finance_news.py` 产出。
+用途：
 
-推荐调用方式：
+- 对比持仓份额变化
+- 提取更早的短期预测
+- 提取上一轮有效判断与边界
 
-```bash
-python3 skills/investment-news-analysis/scripts/cn_finance_news.py
-```
-
-生成后需把结果落到当天 `raw_data/finance_news.json`。
+细则见 [reference/historical-data.md](reference/historical-data.md)。
 
 ### B. 再跑定量脚本
 
@@ -100,21 +100,14 @@ python3 skills/investment-news-analysis/scripts/cn_finance_news.py
 python3 skills/investment-news-analysis/scripts/fetch_market_momentum.py --date YYYY-MM-DD --output 投资新闻归档/YYYY-MM/YYYY-MM-DD/raw_data/market_momentum_YYYY-MM-DD.json
 ```
 
-### C. 读取历史数据
+### C. 准备当天 `finance_news.json`
 
-搜索前必须读取：
+找到当天目录下已经有：
 
-1. `投资新闻归档/index.json`
-2. 与当前持仓相关的近期 summary
-3. `投资者行动/持仓情况.md`
+`投资新闻归档/YYYY-MM/YYYY-MM-DD/raw_data/finance_news.json`
 
-用途：
-
-- 对比持仓份额变化
-- 提取更早的短期预测
-- 提取上一轮有效判断与边界
-
-细则见 [reference/historical-data.md](reference/historical-data.md)。
+这是前一天由 `scripts/cn_finance_news.py` 自动运行后把结果落到当天 `raw_data/finance_news.json`。
+注意：不要自己运行cn_finance_news.py做重复的工作，直接使用已有的 JSON 文件！！！
 
 ## 阶段二：搜索与归档
 
@@ -226,9 +219,9 @@ HTML 规则以 [reference/investment-advice-report-20260517-guide.md](reference/
 ## 日常操作顺序
 
 1. 读取投资者画像。
-2. 准备当天 `raw_data/finance_news.json`。
+2. 读取历史 summary、最新持仓。
 3. 运行 `fetch_market_momentum.py`。
-4. 读取历史 summary、最新持仓。
+4. 准备当天 `raw_data/finance_news.json`。
 5. 按主链路完成政策、市场行情与量级、宏观搜索，再决定是否补基金本身信息。
 6. 分层搜索并即时归档。
 7. 执行历史预测验证和信息充分性检查。

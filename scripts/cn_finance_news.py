@@ -36,9 +36,6 @@ JSON_FEEDS = [
 
 RSS_FEEDS = [
     # RSS源
-    ("C114监管",   "http://www.c114.com.cn/rss/rss_news_550.xml"),
-    ("C114财经",   "http://www.c114.com.cn/rss/rss_news_24.xml"),
-    ("36Kr",       "https://36kr.com/feed"),
     ("经济观察网", "http://www.eeo.com.cn/rss.xml"),
 ]
 
