@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>投资建议报告 - {{report_date}}</title>
+    <style>
+      :root {
+        --bg: #f6f2e9;
+        --card: #fffdf8;
+        --ink: #1f2937;
+        --muted: #5b6472;
+        --line: #dfd6c6;
+        --accent: #8f3d2e;
+        --accent-soft: #f3e0da;
+        --good: #146c43;
+        --rise: #c0362c;
+        --flat: #7a6650;
+        --warn: #9a6700;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", sans-serif;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at top right, rgba(143, 61, 46, 0.08), transparent 28%),
+          linear-gradient(180deg, #f9f5ee 0%, var(--bg) 100%);
+        line-height: 1.7;
+      }
+
+      .shell {
+        max-width: 1380px;
+        margin: 0 auto;
+        padding: 32px 20px 56px;
+      }
+
+      .hero {
+        background: linear-gradient(135deg, #fff8ef 0%, #f7ede3 100%);
+        border: 1px solid rgba(143, 61, 46, 0.15);
+        border-radius: 24px;
+        padding: 28px;
+        box-shadow: 0 18px 40px rgba(80, 56, 36, 0.08);
+      }
+
+      .eyebrow {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+      }
+
+      h1 {
+        margin: 14px 0 10px;
+        font-size: clamp(30px, 4vw, 48px);
+        line-height: 1.15;
+      }
+
+      .lede {
+        margin: 0;
+        color: var(--muted);
+        max-width: 860px;
+      }
+
+      .meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 12px;
+        margin-top: 22px;
+      }
+
+      .meta-card {
+        background: rgba(255, 255, 255, 0.7);
+        border: 1px solid rgba(143, 61, 46, 0.12);
+        border-radius: 16px;
+        padding: 14px 16px;
+      }
+
+      .meta-label {
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 4px;
+      }
+
+      .meta-value {
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .action-board {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 16px;
+        margin-top: 22px;
+      }
+
+      .action-column {
+        background: rgba(255, 255, 255, 0.82);
+        border: 1px solid rgba(143, 61, 46, 0.12);
+        border-radius: 18px;
+        padding: 16px;
+      }
+
+      .action-column h3 {
+        margin: 0 0 10px;
+        font-size: 17px;
+      }
+
+      .action-column.urgent {
+        background: #fff5ef;
+        border-color: rgba(143, 61, 46, 0.22);
+      }
+
+      .action-column.watch {
+        background: #fff9ea;
+        border-color: rgba(154, 103, 0, 0.22);
+      }
+
+      .action-column.steady {
+        background: #f5fbf6;
+        border-color: rgba(20, 108, 67, 0.18);
+      }
+
+      .action-column p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .layout {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+        gap: 24px;
+        margin-top: 24px;
+      }
+
+      .toc,
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        box-shadow: 0 10px 28px rgba(80, 56, 36, 0.06);
+      }
+
+      .toc {
+        position: sticky;
+        top: 20px;
+        align-self: start;
+        padding: 18px;
+      }
+
+      .toc h2 {
+        margin: 0 0 12px;
+        font-size: 16px;
+      }
+
+      .toc a {
+        display: block;
+        padding: 8px 10px;
+        border-radius: 10px;
+        color: var(--muted);
+        text-decoration: none;
+        font-size: 14px;
+      }
+
+      .toc a.toc-sub {
+        padding: 5px 10px 5px 24px;
+        font-size: 13px;
+        color: #6d7480;
+      }
+
+      .toc a:hover {
+        background: #f5efe5;
+        color: var(--accent);
+      }
+
+      .fund-ref {
+        position: relative;
+        display: inline-flex;
+        align-items: baseline;
+        color: var(--accent);
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: underline dotted rgba(143, 61, 46, 0.45);
+        text-underline-offset: 3px;
+      }
+
+      .fund-ref-text {
+        color: inherit;
+      }
+
+      .fund-card {
+        position: absolute;
+        left: 0;
+        top: auto;
+        bottom: calc(100% + 10px);
+        width: 220px;
+        padding: 12px 13px;
+        border: 1px solid rgba(143, 61, 46, 0.16);
+        border-radius: 14px;
+        background: rgba(255, 252, 247, 0.98);
+        box-shadow: 0 16px 34px rgba(80, 56, 36, 0.16);
+        opacity: 0;
+        transform: translateY(6px);
+        pointer-events: none;
+        transition: opacity 0.16s ease, transform 0.16s ease;
+        z-index: 30;
+      }
+
+      .fund-ref:hover .fund-card,
+      .fund-ref:focus-visible .fund-card {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .fund-card-name {
+        display: block;
+        margin-bottom: 2px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .fund-card-code {
+        display: block;
+        margin-bottom: 10px;
+        font-size: 11px;
+        color: var(--muted);
+      }
+
+      .fund-card-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 6px;
+      }
+
+      .fund-card-item {
+        display: grid;
+        gap: 2px;
+        padding: 7px 8px;
+        border-radius: 10px;
+        background: #faf6ef;
+      }
+
+      .fund-card-label {
+        font-size: 10px;
+        color: #7a7f87;
+      }
+
+      .fund-card-value {
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--ink);
+      }
+
+      .content {
+        display: grid;
+        gap: 18px;
+      }
+
+      section {
+        padding: 24px;
+      }
+
+      section h2 {
+        margin: 0 0 14px;
+        font-size: 24px;
+      }
+
+      section h3 {
+        margin: 18px 0 8px;
+        font-size: 18px;
+      }
+
+      p,
+      li {
+        color: var(--ink);
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .note {
+        padding: 14px 16px;
+        border-left: 4px solid var(--warn);
+        background: #fff6df;
+        border-radius: 12px;
+        color: #6b5318;
+      }
+
+      ul {
+        margin: 10px 0 0;
+        padding-left: 20px;
+      }
+
+      .table-wrap {
+        overflow-x: auto;
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 720px;
+        background: #fff;
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        border-bottom: 1px solid #ece4d7;
+        vertical-align: top;
+        text-align: left;
+        font-size: 14px;
+      }
+
+      th {
+        background: #f8f2e8;
+        font-weight: 700;
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      tr.etf-up td:nth-child(3) {
+        color: var(--rise);
+        font-weight: 700;
+      }
+
+      tr.etf-down td:nth-child(3) {
+        color: var(--good);
+        font-weight: 700;
+      }
+
+      tr.etf-flat td:nth-child(3) {
+        color: var(--flat);
+        font-weight: 700;
+      }
+
+      table.etf-overview {
+        table-layout: fixed;
+      }
+
+      table.etf-overview th:nth-child(1),
+      table.etf-overview td:nth-child(1) {
+        width: 24%;
+      }
+
+      table.etf-overview th:nth-child(2),
+      table.etf-overview td:nth-child(2) {
+        width: 18%;
+      }
+
+      table.etf-overview th:nth-child(3),
+      table.etf-overview td:nth-child(3) {
+        width: 12%;
+      }
+
+      table.etf-overview th:nth-child(4),
+      table.etf-overview td:nth-child(4) {
+        width: 46%;
+        white-space: normal;
+        word-break: break-word;
+      }
+
+      .grid-two {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 16px;
+      }
+
+      .mini-card {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #fff;
+      }
+
+      .mini-card h4 {
+        margin: 0 0 10px;
+        font-size: 16px;
+      }
+
+      .decision-list {
+        display: grid;
+        gap: 14px;
+      }
+
+      .decision-item {
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #fff;
+      }
+
+      .decision-item h3 {
+        margin: 0 0 10px;
+      }
+
+      .decision-meta {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 10px;
+      }
+
+      .decision-meta div {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: #faf5ed;
+      }
+
+      .decision-meta strong {
+        display: block;
+        margin-bottom: 2px;
+        font-size: 13px;
+      }
+
+      .decision-detail {
+        display: grid;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .decision-block {
+        padding: 12px 14px;
+        border-radius: 12px;
+        border: 1px solid #efe5d5;
+        background: #fffaf2;
+      }
+
+      .decision-block h4 {
+        margin: 0 0 6px;
+        font-size: 14px;
+      }
+
+      .decision-block p {
+        margin: 0;
+        font-size: 14px;
+      }
+
+      .decision-block ul {
+        margin: 0;
+        padding-left: 18px;
+      }
+
+      .decision-block li + li {
+        margin-top: 4px;
+      }
+
+      .decision-block.boundary {
+        background: #fff8ea;
+        border-color: #f0e0b8;
+      }
+
+      .tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        background: #eef5ef;
+        color: var(--good);
+      }
+
+      footer {
+        margin-top: 18px;
+        padding: 18px 24px;
+        color: var(--muted);
+      }
+
+      @media (max-width: 1180px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+
+        .toc {
+          position: static;
+        }
+
+        section {
+          padding: 20px;
+        }
+
+        .fund-card {
+          left: 50%;
+          top: auto;
+          bottom: calc(100% + 10px);
+          transform: translate(-50%, 6px);
+        }
+
+        .fund-ref:hover .fund-card,
+        .fund-ref:focus-visible .fund-card {
+          transform: translate(-50%, 0);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <span class="eyebrow">持仓分析与建议</span>
+        <h1>投资建议报告 — {{report_date}}</h1>
+        <p class="lede">{{hero_lede}}</p>
+
+        <div class="meta">
+          <div class="meta-card">
+            <span class="meta-label">生成日期</span>
+            <span class="meta-value">{{report_date}}</span>
+          </div>
+          <div class="meta-card">
+            <span class="meta-label">覆盖持仓</span>
+            <span class="meta-value">{{holdings_count_text}}</span>
+          </div>
+          <div class="meta-card">
+            <span class="meta-label">归档形式</span>
+            <span class="meta-value">HTML 页面</span>
+          </div>
+        </div>
+
+        <div class="action-board">
+          <section class="action-column urgent">
+            <h3>{{hero_action_1_title}}</h3>
+            <p>{{hero_action_1_body}}</p>
+          </section>
+          <section class="action-column watch">
+            <h3>{{hero_action_2_title}}</h3>
+            <p>{{hero_action_2_body}}</p>
+          </section>
+          <section class="action-column steady">
+            <h3>{{hero_action_3_title}}</h3>
+            <p>{{hero_action_3_body}}</p>
+          </section>
+        </div>
+      </header>
+
+      <div class="layout">
+        <nav class="toc">
+          <h2>目录</h2>
+          <a href="#sec-1">一、使用边界与画像约束</a>
+          <a href="#sec-2">二、先看这三件事</a>
+          <a href="#sec-3">三、为什么这样排优先级</a>
+          <a href="#sec-4">四、逐只基金怎么处理</a>
+          <a class="toc-sub" href="#fund-1">{{fund_name_1}}</a>
+          <a class="toc-sub" href="#fund-2">{{fund_name_2}}</a>
+          <a class="toc-sub" href="#fund-n">{{fund_name_n}}</a>
+          <a href="#sec-5">五、复盘与风险提示</a>
+          <a href="#sec-6">六、下周观察与政策新方向</a>
+          <a href="#sec-7">七、本次建议摘要</a>
+        </nav>
+
+        <main class="content">
+          <section id="sec-1" class="panel">
+            <h2>一、使用边界与画像约束</h2>
+            <ul>
+              <li>{{boundary_item_1}}</li>
+              <li>{{boundary_item_2}}</li>
+              <li>{{boundary_item_3}}</li>
+              <li>{{boundary_item_4}}</li>
+            </ul>
+          </section>
+
+          <section id="sec-2" class="panel">
+            <h2>二、先看这三件事</h2>
+            <div class="grid-two">
+              <div class="mini-card">
+                <h4>{{quick_card_1_title}}</h4>
+                <ul>
+                  <li>{{quick_card_1_item_1}}</li>
+                  <li>{{quick_card_1_item_2}}</li>
+                  <li>{{quick_card_1_item_3}}</li>
+                </ul>
+              </div>
+              <div class="mini-card">
+                <h4>{{quick_card_2_title}}</h4>
+                <ul>
+                  <li>{{quick_card_2_item_1}}</li>
+                  <li>{{quick_card_2_item_2}}</li>
+                  <li>{{quick_card_2_item_3}}</li>
+                </ul>
+              </div>
+              <div class="mini-card">
+                <h4>{{quick_card_3_title}}</h4>
+                <ul>
+                  <li>{{quick_card_3_item_1}}</li>
+                  <li>{{quick_card_3_item_2}}</li>
+                  <li>{{quick_card_3_item_3}}</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section id="sec-3" class="panel">
+            <h2>三、为什么这样排优先级</h2>
+            <div class="grid-two">
+              <div class="mini-card">
+                <h4>{{reason_card_1_title}}</h4>
+                <p>{{reason_card_1_body}}</p>
+                <p class="muted">{{reason_card_1_muted}}</p>
+              </div>
+              <div class="mini-card">
+                <h4>{{reason_card_2_title}}</h4>
+                <ul>
+                  <li>{{reason_card_2_item_1}}</li>
+                  <li>{{reason_card_2_item_2}}</li>
+                </ul>
+              </div>
+              <div class="mini-card">
+                <h4>{{reason_card_3_title}}</h4>
+                <ul>
+                  <li>{{reason_card_3_item_1}}</li>
+                  <li>{{reason_card_3_item_2}}</li>
+                </ul>
+              </div>
+              <div class="mini-card">
+                <h4>{{reason_card_4_title}}</h4>
+                <p>{{reason_card_4_body}}</p>
+              </div>
+            </div>
+
+            <h3>已获取 ETF 走向总览</h3>
+            <p class="muted">以下表格用于集中展示本轮已抓到的核心行业 ETF 与持仓映射 ETF 走向。若两组 ETF 有重复代码，应先去重后再输出，避免重复展示。</p>
+            <div class="table-wrap">
+              <table class="etf-overview">
+                <thead>
+                  <tr>
+                    <th>ETF(代码)</th>
+                    <th>来源</th>
+                    <th>当日涨跌幅</th>
+                    <th>对应持仓 / 备注</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {{etf_trend_rows}}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="sec-4" class="panel">
+            <h2>四、逐只基金怎么处理</h2>
+            <div class="decision-list">
+              <article id="fund-1" class="decision-item">
+                <h3>{{fund_name_1}}</h3>
+                <div class="decision-meta">
+                  <div><strong>当前建议</strong>{{fund_1_action}}</div>
+                  <div><strong>什么时候动作</strong>{{fund_1_trigger}}</div>
+                </div>
+                <div class="decision-detail">
+                  <div class="decision-block">
+                    <h4>判断理由</h4>
+                    <p>{{fund_1_reason}}</p>
+                  </div>
+                  <div class="decision-block">
+                    <h4>事实依据</h4>
+                    <ul>
+                      <li>{{fund_1_fact_1}}</li>
+                      <li>{{fund_1_fact_2}}</li>
+                      <li>{{fund_1_fact_3}}</li>
+                    </ul>
+                  </div>
+                  <div class="decision-block boundary">
+                    <h4>信息边界</h4>
+                    <p>{{fund_1_boundary}}</p>
+                  </div>
+                </div>
+              </article>
+
+              <article id="fund-2" class="decision-item">
+                <h3>{{fund_name_2}}</h3>
+                <div class="decision-meta">
+                  <div><strong>当前建议</strong>{{fund_2_action}}</div>
+                  <div><strong>什么时候动作</strong>{{fund_2_trigger}}</div>
+                </div>
+                <div class="decision-detail">
+                  <div class="decision-block">
+                    <h4>判断理由</h4>
+                    <p>{{fund_2_reason}}</p>
+                  </div>
+                  <div class="decision-block">
+                    <h4>事实依据</h4>
+                    <ul>
+                      <li>{{fund_2_fact_1}}</li>
+                      <li>{{fund_2_fact_2}}</li>
+                      <li>{{fund_2_fact_3}}</li>
+                    </ul>
+                  </div>
+                  <div class="decision-block boundary">
+                    <h4>信息边界</h4>
+                    <p>{{fund_2_boundary}}</p>
+                  </div>
+                </div>
+              </article>
+
+              <article id="fund-n" class="decision-item">
+                <h3>{{fund_name_n}}</h3>
+                <div class="decision-meta">
+                  <div><strong>当前建议</strong>{{fund_n_action}}</div>
+                  <div><strong>什么时候动作</strong>{{fund_n_trigger}}</div>
+                </div>
+                <div class="decision-detail">
+                  <div class="decision-block">
+                    <h4>判断理由</h4>
+                    <p>{{fund_n_reason}}</p>
+                  </div>
+                  <div class="decision-block">
+                    <h4>事实依据</h4>
+                    <ul>
+                      <li>{{fund_n_fact_1}}</li>
+                      <li>{{fund_n_fact_2}}</li>
+                      <li>{{fund_n_fact_3}}</li>
+                    </ul>
+                  </div>
+                  <div class="decision-block boundary">
+                    <h4>信息边界</h4>
+                    <p>{{fund_n_boundary}}</p>
+                  </div>
+                </div>
+              </article>
+            </div>
+            <p class="note">{{global_boundary_note}}</p>
+          </section>
+
+          <section id="sec-5" class="panel">
+            <h2>五、复盘与风险提示</h2>
+            <div class="grid-two">
+              <div class="mini-card">
+                <h4>{{review_card_1_title}}</h4>
+                <ul>
+                  <li>{{review_card_1_item_1}}</li>
+                  <li>{{review_card_1_item_2}}</li>
+                </ul>
+              </div>
+              <div class="mini-card">
+                <h4>{{review_card_2_title}}</h4>
+                <ul>
+                  <li>{{review_card_2_item_1}}</li>
+                  <li>{{review_card_2_item_2}}</li>
+                  <li>{{review_card_2_item_3}}</li>
+                </ul>
+              </div>
+              <div class="mini-card">
+                <h4>{{review_card_3_title}}</h4>
+                <ul>
+                  <li>{{review_card_3_item_1}}</li>
+                  <li>{{review_card_3_item_2}}</li>
+                  <li>{{review_card_3_item_3}}</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section id="sec-6" class="panel">
+            <h2>六、下周观察与政策新方向</h2>
+            <div class="grid-two">
+              <div class="mini-card">
+                <h4>{{watchlist_title}}</h4>
+                <ul>
+                  <li>{{watchlist_item_1}}</li>
+                  <li>{{watchlist_item_2}}</li>
+                  <li>{{watchlist_item_3}}</li>
+                  <li>{{watchlist_item_4}}</li>
+                </ul>
+              </div>
+            </div>
+
+            <h3>未来3-6个月政策方向观察</h3>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>行业方向</th>
+                    <th>政策依据</th>
+                    <th>当前热度</th>
+                    <th>推荐场外基金方向</th>
+                    <th>建议时机</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{{policy_row_1_industry}}</td>
+                    <td>{{policy_row_1_basis}}</td>
+                    <td><span class="tag">{{policy_row_1_heat}}</span></td>
+                    <td>{{policy_row_1_funds}}</td>
+                    <td>{{policy_row_1_timing}}</td>
+                  </tr>
+                  <tr>
+                    <td>{{policy_row_2_industry}}</td>
+                    <td>{{policy_row_2_basis}}</td>
+                    <td><span class="tag">{{policy_row_2_heat}}</span></td>
+                    <td>{{policy_row_2_funds}}</td>
+                    <td>{{policy_row_2_timing}}</td>
+                  </tr>
+                  <tr>
+                    <td>{{policy_row_3_industry}}</td>
+                    <td>{{policy_row_3_basis}}</td>
+                    <td>{{policy_row_3_heat}}</td>
+                    <td>{{policy_row_3_funds}}</td>
+                    <td>{{policy_row_3_timing}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="sec-7" class="panel">
+            <h2>七、本次建议摘要</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>基金名称(代码)</th>
+                    <th>操作建议</th>
+                    <th>触发条件</th>
+                    <th>建议净值基准</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>{{summary_fund_1}}</td>
+                    <td>{{summary_action_1}}</td>
+                    <td>{{summary_trigger_1}}</td>
+                    <td>{{summary_nav_1}}</td>
+                  </tr>
+                  <tr>
+                    <td>{{summary_fund_2}}</td>
+                    <td>{{summary_action_2}}</td>
+                    <td>{{summary_trigger_2}}</td>
+                    <td>{{summary_nav_2}}</td>
+                  </tr>
+                  <tr>
+                    <td>{{summary_fund_n}}</td>
+                    <td>{{summary_action_n}}</td>
+                    <td>{{summary_trigger_n}}</td>
+                    <td>{{summary_nav_n}}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </main>
+      </div>
+
+      <footer>
+        {{footer_text}}
+      </footer>
+    </div>
+
+    <script>
+      (() => {
+        const funds = {{fund_cards_json}};
+        if (!Array.isArray(funds) || funds.length === 0) {
+          return;
+        }
+
+        const fundMap = new Map(funds.map((fund) => [fund.full, fund]));
+        const pattern = new RegExp(
+          funds
+            .map((fund) => fund.full.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+            .sort((left, right) => right.length - left.length)
+            .join("|"),
+          "g"
+        );
+
+        const roots = document.querySelectorAll(".hero, .content");
+        for (const root of roots) {
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+              const parent = node.parentElement;
+              if (!parent || !node.textContent.trim()) {
+                return NodeFilter.FILTER_REJECT;
+              }
+              if (parent.closest("#sec-7, .fund-ref, nav, a, table, script, style")) {
+                return NodeFilter.FILTER_REJECT;
+              }
+              pattern.lastIndex = 0;
+              return pattern.test(node.textContent) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+            }
+          });
+
+          const nodes = [];
+          while (walker.nextNode()) {
+            nodes.push(walker.currentNode);
+          }
+
+          for (const node of nodes) {
+            const text = node.textContent;
+            pattern.lastIndex = 0;
+            const fragment = document.createDocumentFragment();
+            let lastIndex = 0;
+            let match;
+
+            while ((match = pattern.exec(text)) !== null) {
+              if (match.index > lastIndex) {
+                fragment.append(document.createTextNode(text.slice(lastIndex, match.index)));
+              }
+
+              const fund = fundMap.get(match[0]);
+              const wrapper = document.createElement("span");
+              wrapper.className = "fund-ref";
+              wrapper.tabIndex = 0;
+              wrapper.innerHTML = `
+                <span class="fund-ref-text">${fund.full}</span>
+                <span class="fund-card" aria-hidden="true">
+                  <span class="fund-card-name">${fund.name}</span>
+                  <span class="fund-card-code">代码 ${fund.code}</span>
+                  <span class="fund-card-grid">
+                    <span class="fund-card-item"><span class="fund-card-label">净值</span><span class="fund-card-value">${fund.nav}</span></span>
+                    <span class="fund-card-item"><span class="fund-card-label">总金额</span><span class="fund-card-value">${fund.amount}</span></span>
+                    <span class="fund-card-item"><span class="fund-card-label">占比</span><span class="fund-card-value">${fund.weight}</span></span>
+                  </span>
+                </span>
+              `;
+              fragment.append(wrapper);
+              lastIndex = match.index + match[0].length;
+            }
+
+            if (lastIndex < text.length) {
+              fragment.append(document.createTextNode(text.slice(lastIndex)));
+            }
+
+            node.parentNode.replaceChild(fragment, node);
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>
