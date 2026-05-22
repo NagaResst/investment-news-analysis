@@ -165,6 +165,10 @@ def normalize_amount_text(amount_text):
     return safe_float(cleaned, 2)
 
 
+def get_prior_day_cutoff(as_of_date):
+    return (pd.Timestamp(as_of_date).normalize() - timedelta(days=1)).date()
+
+
 def parse_report_date_from_path(path):
     match = re.search(r"投资建议报告_(\d{8})\.html$", path.name)
     if not match:
@@ -444,36 +448,40 @@ def build_holdings_change_summary(current_holdings, previous_context, fund_navs)
     }
 
 
-def get_northbound_daily_raw(date_str):
-    """保留东方财富原始字段，同时写出联网交叉验证后的单位换算。"""
+def get_northbound_daily_raw(as_of_date, lookback_days=7):
+    """返回分析日之前最近一个交易日的北向原始字段，同时写出联网交叉验证后的单位换算。"""
     try:
-        response = requests.get(
-            EASTMONEY_MUTUAL_HISTORY_URL,
-            params={
-                "sortColumns": "TRADE_DATE",
-                "sortTypes": "-1",
-                "pageSize": "500",
-                "pageNumber": "1",
-                "reportName": "RPT_MUTUAL_DEAL_HISTORY",
-                "columns": "ALL",
-                "source": "WEB",
-                "client": "WEB",
-                "filter": f"(TRADE_DATE='{date_str}')",
-            },
-            timeout=20,
+        cutoff_date = get_prior_day_cutoff(as_of_date)
+        start_date = cutoff_date - timedelta(days=lookback_days - 1)
+        rows = fetch_eastmoney_mutual_deal_history(
+            start_date.strftime("%Y-%m-%d"), cutoff_date.strftime("%Y-%m-%d")
         )
-        response.raise_for_status()
-        rows = (((response.json() or {}).get("result") or {}).get("data") or [])
-        row = next((item for item in rows if str(item.get("MUTUAL_TYPE")) == "005"), None)
+        if not rows:
+            return {"status": "not_found", "requested_as_of_date": as_of_date, "cutoff_date": str(cutoff_date)}
+
+        frame = pd.DataFrame(rows)
+        frame["TRADE_DATE"] = pd.to_datetime(frame["TRADE_DATE"], errors="coerce").dt.normalize()
+        frame = frame[
+            (frame["TRADE_DATE"] >= pd.Timestamp(start_date))
+            & (frame["TRADE_DATE"] <= pd.Timestamp(cutoff_date))
+            & (frame["MUTUAL_TYPE"].astype(str) == "005")
+        ].copy()
+        if frame.empty:
+            return {"status": "not_found", "requested_as_of_date": as_of_date, "cutoff_date": str(cutoff_date)}
+
+        frame = frame.sort_values(by="TRADE_DATE", ascending=False)
+        row = frame.iloc[0].to_dict()
         if row is None:
-            return {"status": "not_found", "date": date_str}
+            return {"status": "not_found", "requested_as_of_date": as_of_date, "cutoff_date": str(cutoff_date)}
         deal_amt_raw = row.get("DEAL_AMT")
         net_deal_amt_raw = row.get("NET_DEAL_AMT")
         buy_amt_raw = row.get("BUY_AMT")
         sell_amt_raw = row.get("SELL_AMT")
         return {
             "status": "raw_record_available",
-            "date": date_str,
+            "requested_as_of_date": as_of_date,
+            "cutoff_date": str(cutoff_date),
+            "date": str(pd.Timestamp(row.get("TRADE_DATE")).date()),
             "report_name": "RPT_MUTUAL_DEAL_HISTORY",
             "mutual_type": "005",
             "deal_amt_raw": deal_amt_raw,
@@ -494,7 +502,7 @@ def get_northbound_daily_raw(date_str):
             "note": "响应行本身没有给数值单位打标签，但联网交叉验证后可按百万元理解；例如 DEAL_AMT=358681.44 时，对应约 3586.81 亿元。",
         }
     except Exception as exc:
-        return {"status": "error", "date": date_str, "message": str(exc)}
+        return {"status": "error", "requested_as_of_date": as_of_date, "message": str(exc)}
 
 
 def fetch_eastmoney_mutual_deal_history(start_date, end_date):
@@ -534,7 +542,7 @@ def fetch_eastmoney_mutual_deal_history(start_date, end_date):
 def get_northbound_weekly_summary(as_of_date, days=7):
     """优先用东财原始表的 006 北向汇总类型直接计算近7天净流向。"""
     try:
-        target_date = pd.Timestamp(as_of_date).normalize()
+        target_date = pd.Timestamp(get_prior_day_cutoff(as_of_date))
         start_date = target_date - timedelta(days=days - 1)
         rows = fetch_eastmoney_mutual_deal_history(start_date.strftime("%Y-%m-%d"), target_date.strftime("%Y-%m-%d"))
         if not rows:
@@ -635,61 +643,167 @@ def get_sina_etf_history(symbol):
     return df.sort_values(by="date", ascending=True).reset_index(drop=True)
 
 
-def get_single_etf_daily(code, theme, as_of_date):
-    target_date = pd.Timestamp(as_of_date).date()
-    symbol = infer_sina_symbol(code)
+def get_eastmoney_etf_history(code):
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Referer": "https://quote.eastmoney.com/",
+        "Connection": "close",
+    }
+    endpoints = [
+        "https://push2his.eastmoney.com/api/qt/stock/kline/get",
+        "https://91.push2his.eastmoney.com/api/qt/stock/kline/get",
+        "https://60.push2his.eastmoney.com/api/qt/stock/kline/get",
+    ]
+    secid_candidates = [
+        f"{'1' if code.startswith(('5', '6')) else '0'}.{code}",
+        f"{'0' if code.startswith(('5', '6')) else '1'}.{code}",
+    ]
+    last_error = None
 
-    try:
-        df = get_sina_etf_history(symbol)
-        if df.empty:
-            return {
-                "code": code,
-                "theme": theme,
-                "symbol": symbol,
-                "status": "empty",
-            }
+    for endpoint in endpoints:
+        for secid in secid_candidates:
+            try:
+                response = requests.get(
+                    endpoint,
+                    headers=headers,
+                    params={
+                        "secid": secid,
+                        "fields1": "f1,f2,f3,f4,f5,f6",
+                        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58",
+                        "klt": "101",
+                        "fqt": "0",
+                        "beg": "19900101",
+                        "end": "20500101",
+                        "ut": "fa5fd1943c7b386f172d6893dbfba10b",
+                        "lmt": "100000",
+                    },
+                    timeout=20,
+                )
+                response.raise_for_status()
+                payload = response.json() or {}
+                klines = ((payload.get("data") or {}).get("klines")) or []
+                if not klines:
+                    raise ValueError(f"empty kline for secid={secid}")
 
-        row_index = df.index[df["date"] == target_date]
-        if len(row_index) == 0:
-            return {
-                "code": code,
-                "theme": theme,
-                "symbol": symbol,
-                "status": "date_not_found",
-            }
+                rows = []
+                for item in klines:
+                    parts = item.split(",")
+                    if len(parts) < 7:
+                        continue
+                    rows.append(
+                        {
+                            "date": parts[0],
+                            "open": parts[1],
+                            "close": parts[2],
+                            "high": parts[3],
+                            "low": parts[4],
+                            "volume": parts[5],
+                            "amount": parts[6],
+                        }
+                    )
 
-        idx = int(row_index[0])
-        row = df.loc[idx]
-        prev_close = None
-        change_pct = None
-        if idx > 0 and pd.notna(df.loc[idx - 1, "close"]):
-            prev_close = float(df.loc[idx - 1, "close"])
-            if prev_close != 0:
-                change_pct = round((float(row["close"]) / prev_close - 1) * 100, 2)
+                df = pd.DataFrame(rows)
+                if df.empty:
+                    raise ValueError(f"parsed kline empty for secid={secid}")
 
+                df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
+                for column in ["open", "close", "high", "low", "volume", "amount"]:
+                    df[column] = pd.to_numeric(df[column], errors="coerce")
+
+                df = df.dropna(subset=["date", "close"]).sort_values(by="date", ascending=True).reset_index(drop=True)
+                if df.empty:
+                    raise ValueError(f"cleaned kline empty for secid={secid}")
+
+                return df
+            except Exception as exc:
+                last_error = exc
+
+    raise ValueError(f"Eastmoney fallback failed: {last_error}")
+
+
+def build_etf_daily_from_history(df, code, theme, symbol, source, as_of_date):
+    target_date = get_prior_day_cutoff(as_of_date)
+    if df.empty:
         return {
             "code": code,
             "theme": theme,
             "symbol": symbol,
-            "status": "success",
-            "date": str(row["date"]),
-            "open": float(row["open"]),
-            "high": float(row["high"]),
-            "low": float(row["low"]),
-            "close": float(row["close"]),
-            "prev_close": prev_close,
-            "change_pct": change_pct,
-            "volume": int(row["volume"]),
-            "amount": int(row["amount"]),
-            "source": "Sina 历史 K 线（requests verify=False + hk_js_decode）",
+            "status": "empty",
         }
+
+    eligible = df[df["date"] <= target_date]
+    if eligible.empty:
+        return {
+            "code": code,
+            "theme": theme,
+            "symbol": symbol,
+            "status": "date_not_found",
+        }
+
+    idx = int(eligible.index[-1])
+    row = df.loc[idx]
+    prev_close = None
+    change_pct = None
+    if idx > 0 and pd.notna(df.loc[idx - 1, "close"]):
+        prev_close = float(df.loc[idx - 1, "close"])
+        if prev_close != 0:
+            change_pct = round((float(row["close"]) / prev_close - 1) * 100, 2)
+
+    return {
+        "code": code,
+        "theme": theme,
+        "symbol": symbol,
+        "status": "success",
+        "date": str(row["date"]),
+        "open": float(row["open"]),
+        "high": float(row["high"]),
+        "low": float(row["low"]),
+        "close": float(row["close"]),
+        "prev_close": prev_close,
+        "change_pct": change_pct,
+        "volume": safe_int(row.get("volume")),
+        "amount": safe_int(row.get("amount")),
+        "source": source,
+    }
+
+
+def get_single_etf_daily(code, theme, as_of_date):
+    symbol = infer_sina_symbol(code)
+
+    try:
+        df = get_sina_etf_history(symbol)
+        result = build_etf_daily_from_history(
+            df,
+            code=code,
+            theme=theme,
+            symbol=symbol,
+            source="Sina 历史 K 线（requests verify=False + hk_js_decode）",
+            as_of_date=as_of_date,
+        )
+        if result["status"] == "success":
+            return result
+    except Exception as exc:
+        sina_error = str(exc)
+    else:
+        sina_error = "Sina returned no eligible ETF daily row"
+
+    try:
+        fallback_df = get_eastmoney_etf_history(code)
+        return build_etf_daily_from_history(
+            fallback_df,
+            code=code,
+            theme=theme,
+            symbol=symbol,
+            source="Eastmoney 历史 K 线 fallback",
+            as_of_date=as_of_date,
+        )
     except Exception as exc:
         return {
             "code": code,
             "theme": theme,
             "symbol": symbol,
             "status": "error",
-            "message": str(exc),
+            "message": f"Sina failed: {sina_error}; Eastmoney fallback failed: {exc}",
         }
 
 
@@ -726,12 +840,30 @@ def get_fund_nav_batch(holdings):
                 results.append({"code": code, "name": item["name"], "status": "empty"})
                 continue
 
-            last_nav_row = df_hist.iloc[-1]
+            cutoff_date = get_prior_day_cutoff(item["as_of_date"])
+            df_hist = df_hist.copy()
+            df_hist["净值日期"] = pd.to_datetime(df_hist["净值日期"], errors="coerce").dt.date
+            eligible = df_hist[df_hist["净值日期"] <= cutoff_date]
+            if eligible.empty:
+                results.append(
+                    {
+                        "code": code,
+                        "name": item["name"],
+                        "status": "date_not_found",
+                        "requested_as_of_date": item["as_of_date"],
+                        "cutoff_date": str(cutoff_date),
+                    }
+                )
+                continue
+
+            last_nav_row = eligible.iloc[-1]
             results.append(
                 {
                     "code": code,
                     "name": item["name"],
                     "status": "success",
+                    "requested_as_of_date": item["as_of_date"],
+                    "cutoff_date": str(cutoff_date),
                     "official_nav": float(last_nav_row["单位净值"]),
                     "nav_date": str(last_nav_row["净值日期"]),
                 }
@@ -745,6 +877,8 @@ def build_payload(as_of_date, holdings_file):
     holdings = load_holdings_from_markdown(holdings_file)
     previous_report_context = load_previous_report_context(as_of_date)
     holdings_for_nav = merge_holdings_for_nav(holdings, previous_report_context)
+    for item in holdings_for_nav:
+        item["as_of_date"] = as_of_date
     core_industry_etf_daily = get_core_industry_etf_daily(as_of_date)
     fund_official_navs = get_fund_nav_batch(holdings_for_nav)
     holding_valuation_snapshot = build_holding_valuation_snapshot(holdings, fund_official_navs)
@@ -756,6 +890,7 @@ def build_payload(as_of_date, holdings_file):
     return {
         "generated_at": datetime.now().isoformat(timespec="seconds"),
         "as_of_date": as_of_date,
+        "day_level_cutoff_date": str(get_prior_day_cutoff(as_of_date)),
         "holdings_source": str(Path(holdings_file).resolve()),
         "holdings_count": len(holdings),
         "holdings": holdings,
