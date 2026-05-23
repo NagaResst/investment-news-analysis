@@ -46,15 +46,15 @@ HTML 投资建议报告的结构、写法与组件规范。
 
 ## 执行协议
 
-| 阶段 | 必读参考 | 本阶段必须产出 |
-|------|---------|---------------|
-| 画像约束前 | `投资者行动/投资者画像.md` | 黑名单、风险偏好、工具边界 |
-| 当日新闻前 | `scripts/cn_finance_news.py` | 当天 `raw_data/finance_news.json` |
-| 搜索前 | [reference/archiving.md](reference/archiving.md) | 当日归档目录、单条摘要字段、去重规则 |
-| 定量数据前 | `scripts/fetch_market_momentum.py` | 前一交易日官方净值、ETF 收盘、北向单日、持仓快照 |
-| 历史读取前 | [reference/historical-data.md](reference/historical-data.md) | 历史 summary 提取、最近可比较基准读取、持仓变化对比 |
-| 预测前 | [reference/prediction-verification.md](reference/prediction-verification.md) | 历史预测验证、信息充分性检查 |
-| HTML 输出前 | [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) + `reference/investment-advice-report-20260517-template.html` | 符合模板结构的完整 HTML 页面 |
+| 阶段       | 必读参考                                                                                                                                                                       | 本阶段必须产出                                      |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| 画像约束前    | `投资者行动/投资者画像.md`                                                                                                                                                           | 黑名单、风险偏好、工具边界                                |
+| 搜索前      | [reference/archiving.md](reference/archiving.md)                                                                                                                           | 当日归档目录、单条摘要字段、去重规则                           |
+| 搜索阶段     | [reference/search-strategy.md](reference/search-strategy.md)                                                                                                               | 以`finance_news.json`为初始轮素材，额外再加上网络搜到的素材归档到本地 |
+| 定量数据前    | `scripts/fetch_market_momentum.py`                                                                                                                                         | 前一交易日官方净值、ETF 收盘、北向单日、持仓快照                   |
+| 历史读取前    | [reference/historical-data.md](reference/historical-data.md)                                                                                                               | 历史 summary 提取、最近可比较基准读取、持仓变化对比               |
+| 预测前      | [reference/prediction-verification.md](reference/prediction-verification.md)                                                                                               | 历史预测验证、信息充分性检查                               |
+| HTML 输出前 | [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) + `reference/investment-advice-report-20260517-template.html` | 符合模板结构的完整 HTML 页面                            |
 
 ## 阶段零：画像与边界约束
 
@@ -113,8 +113,8 @@ python3 skills/investment-news-analysis/scripts/fetch_market_momentum.py --date 
 
 搜索顺序以 [reference/search-strategy.md](reference/search-strategy.md) 为准。主链路固定为：
 
-1. 先读今天 `raw_data/finance_news.json`
-2. 先搜政策面
+1. 先读今天 `raw_data/finance_news.json`对其内容进行筛选
+2. 然后搜政策面
 3. 再搜市场行情面和量级新闻
 4. 最后搜宏观面
 
