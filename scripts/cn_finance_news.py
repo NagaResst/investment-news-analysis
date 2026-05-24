@@ -186,10 +186,16 @@ def parse_rss(raw):
 def collect_json(max_days):
     results = []
     today_str, yesterday_str = get_cn_today_and_yesterday()
+    # 生成最近 max_days 天的日期集合（用于过滤）
+    target_dates = set()
+    from datetime import timedelta
+    for i in range(max_days):
+        d = datetime.now(CHINA_TZ) - timedelta(days=i)
+        target_dates.add(d.strftime("%Y-%m-%d"))
+    
     for name, url in JSON_FEEDS:
-        print(f"  [JSON] {name} {today_str} ... ", end="", flush=True)
+        print(f"  [JSON] {name} (最近{max_days}天) ... ", end="", flush=True)
         items = []
-        saw_yesterday = False
         for page in range(1, SINA_MAX_PAGES + 1):
             raw = curl(build_sina_page_url(url, page, SINA_PAGE_SIZE))
             if not raw:
@@ -199,14 +205,19 @@ def collect_json(max_days):
             page_items = parse_sina_json(raw)
             if not page_items:
                 break
+            page_has_target = False
             for it in page_items:
-                if it.get("pubDate") == today_str:
+                pub = it.get("pubDate", "")
+                if pub in target_dates:
                     items.append(it)
-                elif it.get("pubDate") == yesterday_str:
-                    saw_yesterday = True
+                    page_has_target = True
+            # 如果这页没有目标日期的新闻，说明已经翻过了（新浪按时间排序）
+            if not page_has_target and page_items:
+                # 检查是不是所有新闻都比目标范围更老
+                oldest = min((it.get("pubDate","") for it in page_items if it.get("pubDate")), default="")
+                if oldest and oldest < min(target_dates):
+                    break
             if len(page_items) < SINA_PAGE_SIZE:
-                break
-            if saw_yesterday:
                 break
         for it in items: it["source"] = name
         results.extend(items)
@@ -216,6 +227,7 @@ def collect_json(max_days):
 
 def collect_rss(max_days):
     results = []
+    today_str, yesterday_str = get_cn_today_and_yesterday()
     for name, url in RSS_FEEDS:
         print(f"  [RSS]  {name} ... ", end="", flush=True)
         raw = curl(url)
@@ -224,6 +236,7 @@ def collect_rss(max_days):
             continue
         items = parse_rss(raw)
         for it in items: it["source"] = name
+        # 用 max_days 动态过滤（与 JSON 源一致）
         items = [it for it in items if in_range(it["pubDate"], max_days)]
         results.extend(items)
         print(f"{len(items)} 条" if items else "无数据")
@@ -294,11 +307,18 @@ def main():
                   f, ensure_ascii=False, indent=2)
     print(f"\n完整JSON → {OUT_FILE}")
 
-    # 统计
-    if items:
-        print("\n来源统计:")
-        for src, cnt in Counter(it["source"] for it in items).most_common():
-            print(f"  {src}: {cnt}")
+    # 来源统计（用于排查数据来源）
+    source_count = Counter(it["source"] for it in items)
+    print("\n来源统计:")
+    for src, cnt in source_count.most_common():
+        print(f"  {src}: {cnt}")
+    
+    # 调试：打印每个来源的标题长度分布
+    print("\n调试 - 各来源标题长度范围:")
+    for src in set(it["source"] for it in items):
+        titles = [it["title"] for it in items if it["source"] == src]
+        if titles:
+            print(f"  {src}: {min(len(t) for t in titles)}-{max(len(t) for t in titles)} 字符")
 
 
 if __name__ == "__main__":
