@@ -28,8 +28,8 @@
 2. [reference/prediction-verification.md](reference/prediction-verification.md)
 短期预测与历史预测验证的唯一规则来源。
 
-3. [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md)
-HTML 建议报告的唯一写法来源。
+3. [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) + `reference/investment-advice-report-20260517-template.html`
+HTML 建议报告的唯一写法来源与唯一页面骨架。生成 HTML 时必须直接基于模板文件填充，禁止脱离模板另写一套页面结构。
 
 ## 最短工作流
 
@@ -41,7 +41,7 @@ HTML 建议报告的唯一写法来源。
 6. 外部信息写入 `item_summaries/`，脚本输出写入 `raw_data/`
 7. 执行历史预测验证与信息充分性检查
 8. 生成每日 summary
-9. 生成投资建议 HTML 页面
+9. 基于 `reference/investment-advice-report-20260517-template.html` 生成投资建议 HTML 页面
 
 ## 相关文档
 
@@ -53,4 +53,4 @@ HTML 建议报告的唯一写法来源。
 
 ---
 
-**最后更新**：2026-05-21
+**最后更新**：2026-05-27

@@ -39,8 +39,8 @@ description: 持仓监控与量化调仓建议系统。面向多持仓组合，�
 2. [reference/prediction-verification.md](reference/prediction-verification.md)
 短期预测与历史预测验证的唯一规则来源。
 
-3. [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md)
-HTML 投资建议报告的结构、写法与组件规范。
+3. [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) + `reference/investment-advice-report-20260517-template.html`
+HTML 投资建议报告的唯一结构规范与唯一页面骨架。两者必须一起使用，禁止脱离模板文件另写一套 HTML 结构或样式。
 
 其他参考文档只提供补充流程或实现细节，不再单独定义另一套日报或建议结构。
 
@@ -54,7 +54,7 @@ HTML 投资建议报告的结构、写法与组件规范。
 | 定量数据前    | `scripts/fetch_market_momentum.py`                                                                                                                                         | 前一交易日官方净值、ETF 收盘、北向单日、持仓快照                   |
 | 历史读取前    | [reference/historical-data.md](reference/historical-data.md)                                                                                                               | 历史 summary 提取、最近可比较基准读取、持仓变化对比               |
 | 预测前      | [reference/prediction-verification.md](reference/prediction-verification.md)                                                                                               | 历史预测验证、信息充分性检查                               |
-| HTML 输出前 | [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) + `reference/investment-advice-report-20260517-template.html` | 符合模板结构的完整 HTML 页面                            |
+| HTML 输出前 | [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) + `reference/investment-advice-report-20260517-template.html` | 必须基于模板文件填充出的完整 HTML 页面，禁止自定义另一套页面骨架 |
 
 ## 阶段零：画像与边界约束
 
@@ -180,7 +180,9 @@ python3 skills/investment-news-analysis/scripts/fetch_market_momentum.py --date 
 
 `投资者行动/持仓分析与建议/投资建议报告_YYYYMMDD.html`
 
-HTML 规则以 [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) 为准。
+HTML 规则以 [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) 和 `reference/investment-advice-report-20260517-template.html` 为准，两者缺一不可。
+
+硬约束：每次生成 HTML 时，必须直接复用 `reference/investment-advice-report-20260517-template.html` 作为页面骨架，只允许填充当日内容、数据和 `fund_cards_json`。禁止自行设计另一套 HTML / CSS / 章节结构后再声称“符合模板精神”。
 
 这里只保留最低要求：
 
@@ -192,10 +194,11 @@ HTML 规则以 [reference/investment-advice-report-20260517-guide.md](reference/
 6. 基金名单只能来自 `投资者行动/持仓情况.md`，不得靠正文手写回忆补全。
 7. 交付前必须逐一对账：目录子链接数、第四章基金卡片数、第七章摘要表行数，三者都必须与当前持仓基金数量一致。
 8. 交付前必须逐一对账基金名称：目录、第四章卡片标题、第七章摘要表第一列，必须全部使用与持仓文件一致的“基金名称(代码)”全称。
-9. 如果使用 `investment-advice-report-20260517-template.html`，必须填充 `fund_cards_json`，让正文基金名称自动挂载悬浮卡片；悬浮卡片最少包含净值、总金额、占比三项。
+9. 必须使用 `investment-advice-report-20260517-template.html`，并填充 `fund_cards_json`，让正文基金名称自动挂载悬浮卡片；悬浮卡片最少包含净值、总金额、占比三项。
 10. HTML 不是上一日页面的改写版；第二章到第六章必须显式体现当日新增事实，而不是只复述上一日结论。
 11. 当数据基准日与上一日报告相同，HTML 必须明确分开写“今天沿用的静态数据”与“今天新增的新闻 / 风险 / 反向证据”，不得混写成连续叙事。
 12. 第二章必须落出当日新增 `item_summaries` 的主要锚点；第五章必须写清“今日新增验证样本数”，禁止沿用上一日验证口径冒充今日结果。
+13. 若最终 HTML 不是从 `reference/investment-advice-report-20260517-template.html` 直接填充出来，而是另写的一套页面结构，即使内容正确，也视为交付失败。
 
 ### HTML 交付前强制校验
 
@@ -207,6 +210,7 @@ HTML 生成完成后，未通过以下校验不得交付：
 4. 若启用模板悬浮卡片，fund_cards_json 条数必须等于当前持仓数，且 `full` 字段必须与持仓文件中的“基金名称(代码)”完全一致。
 5. 若任何一项数量或名称对不上，优先修正 HTML 和数据映射，不得带着缺口继续输出结论。
 6. 若第二章到第六章读起来仍像上一日 summary 的续写版，视为交付失败；必须回到当日 summary 和 item_summaries 重新展开当天新增内容。
+7. 若页面骨架、章节结构、悬浮卡片注入方式明显不是 `reference/investment-advice-report-20260517-template.html` 这一套，视为交付失败；必须回到模板文件重新生成。
 
 ## 最低交付线
 
@@ -249,6 +253,6 @@ HTML 生成完成后，未通过以下校验不得交付：
 
 ---
 
-**版本**：v4.1  
-**最后更新**：2026-05-26  
+**版本**：v4.2  
+**最后更新**：2026-05-27  
 **维护者**：NagaResst
