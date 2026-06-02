@@ -314,20 +314,44 @@
               </div>
             </div>
 
-            <h3>已获取 ETF 走向总览</h3>
-            <p class="muted">以下表格用于集中展示本轮已抓到的核心行业 ETF 与持仓映射 ETF 走向。若两组 ETF 有重复代码，应先去重后再输出，避免重复展示。</p>
+            <h3>宽基ETF与申万二级行业总览</h3>
+            <p class="muted">以下表格展示宽基ETF走势及申万二级行业涨跌幅排行。宽基ETF用于判断市场整体方向，申万二级行业用于判断细分板块强弱。数据来源：sw_l2_industry_daily，共约131个行业。</p>
             <div class="table-wrap">
               <table class="etf-overview">
                 <thead>
                   <tr>
                     <th>ETF(代码)</th>
-                    <th>来源</th>
+                    <th>类型</th>
                     <th>前一交易日涨跌幅</th>
                     <th>对应持仓 / 备注</th>
                   </tr>
                 </thead>
                 <tbody>
                   {{etf_trend_rows}}
+                </tbody>
+              </table>
+            </div>
+
+            <h4>申万二级行业涨幅前10</h4>
+            <div class="table-wrap">
+              <table class="etf-overview">
+                <thead>
+                  <tr><th>行业</th><th>涨跌幅</th><th>PE(TTM)</th><th>PB</th><th>股息率</th><th>流通市值(亿)</th></tr>
+                </thead>
+                <tbody>
+                  {{sw_l2_top10_rows}}
+                </tbody>
+              </table>
+            </div>
+
+            <h4>申万二级行业跌幅前10</h4>
+            <div class="table-wrap">
+              <table class="etf-overview">
+                <thead>
+                  <tr><th>行业</th><th>涨跌幅</th><th>PE(TTM)</th><th>PB</th><th>股息率</th><th>流通市值(亿)</th></tr>
+                </thead>
+                <tbody>
+                  {{sw_l2_bottom10_rows}}
                 </tbody>
               </table>
             </div>

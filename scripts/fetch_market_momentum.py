@@ -22,43 +22,48 @@ CORE_INDUSTRY_ETFS = {
     "588000": {"theme": "科创50"},
     "159915": {"theme": "创业板"},
     "510300": {"theme": "沪深300"},
-    "512480": {"theme": "半导体"},
-    "516160": {"theme": "新能源"},
-    "516650": {"theme": "有色金属"},
-    "515790": {"theme": "光伏"},
-    "512170": {"theme": "医药"},
-    "159928": {"theme": "消费"},
-    "510230": {"theme": "金融"},
-    "512660": {"theme": "军工"},
-    "159995": {"theme": "芯片"},
-    "515070": {"theme": "人工智能"},
-    "512880": {"theme": "证券"},
-    "512800": {"theme": "银行"},
-    "512690": {"theme": "白酒"},
+    "510500": {"theme": "中证500"},
+    "510050": {"theme": "上证50"},
+    "563360": {"theme": "中证A500"},
+    "560050": {"theme": "中国A50"},
 }
 
 HOLDING_RELEVANT_ETFS = {
-    "516160": {
-        "related_funds": ["嘉实新能源新材料股票A(003984)"],
+    "513050": {
+        "theme": "央企红利",
+        "related_funds": ["天弘中证央企红利50指数A(021561)"],
+    },
+    "159781": {
+        "theme": "科创创业50",
+        "related_funds": ["天弘中证科创创业50ETF联接A(012894)"],
+    },
+    "560050": {
+        "theme": "中国A50",
+        "related_funds": ["中银MSCI中国A50互联互通指数增强A(014623)"],
+    },
+    "562550": {
+        "theme": "绿电",
+        "related_funds": ["富国中证绿色电力ETF发起式联接A(020095)"],
     },
     "510300": {
-        "related_funds": ["中欧沪深300指数量化增强C(021758)"],
+        "theme": "沪深300",
+        "related_funds": ["易方达沪深300指数精选增强A(010736)"],
     },
-    "510500": {
-        "related_funds": ["长城中证500指数增强C(007413)"],
+    "159996": {
+        "theme": "家电",
+        "related_funds": ["易方达中证家电龙头ETF联接C(018647)"],
+    },
+    "159995": {
+        "theme": "芯片",
+        "related_funds": ["汇添富中证芯片产业指数增强C(014194)"],
     },
     "588000": {
-        "related_funds": [
-            "易方达上证科创50联接C(011609)",
-            "财通新视野灵活配置混合A(005851)",
-            "华商新趋势优选灵活配置混合(166301)",
-        ],
+        "theme": "科创50",
+        "related_funds": ["华商新趋势优选灵活配置混合(166301)"],
     },
     "511010": {
-        "related_funds": [
-            "嘉实稳固收益债券D(024212)",
-            "中欧鼎利债券C(009520)",
-        ],
+        "theme": "国债",
+        "related_funds": ["中欧鼎利债券C(009520)"],
     },
 }
 
@@ -373,6 +378,8 @@ def build_holdings_change_summary(current_holdings, previous_context, fund_navs)
         previous_item = previous_map.get(code)
         current_shares = safe_float(current_item.get("shares"), 2) if current_item else 0.0
         previous_shares = safe_float(previous_item.get("shares"), 2) if previous_item else 0.0
+        current_shares = current_shares if current_shares is not None else 0.0
+        previous_shares = previous_shares if previous_shares is not None else 0.0
         share_delta = round(current_shares - previous_shares, 2)
 
         if nearly_equal(current_shares, previous_shares, tolerance=0.005):
@@ -817,12 +824,85 @@ def get_core_industry_etf_daily(as_of_date):
     return results
 
 
+def get_sw_l2_industry_daily(as_of_date):
+    """抓取申万二级行业指数日报数据（收盘指数、涨跌幅、市盈率、市净率等）。
+
+    若 cutoff_date 为非交易日，自动往前最多回溯 5 天寻找最近交易日数据。
+    """
+    try:
+        # 从分析日本身开始往前回溯，找到最近有数据的交易日
+        start_date = pd.Timestamp(as_of_date).normalize().date()
+
+        # 尝试从 start_date 开始往前最多 5 天，找到有数据的最近交易日
+        found_df = None
+        found_date = None
+        for offset in range(6):
+            check_date = start_date - timedelta(days=offset)
+            date_str = check_date.strftime("%Y%m%d")
+            try:
+                df = ak.index_analysis_daily_sw(symbol="二级行业", start_date=date_str, end_date=date_str)
+                if not df.empty:
+                    found_df = df
+                    found_date = check_date
+                    break
+            except Exception:
+                continue
+
+        if found_df is None:
+            return {
+                "status": "empty",
+                "requested_date": str(start_date),
+                "note": "申万二级行业日报返回空数据，回溯5天仍无可用交易日。",
+            }
+
+        industries = []
+        for _, row in found_df.iterrows():
+            industries.append(
+                {
+                    "index_code": str(row.get("指数代码", "")),
+                    "index_name": str(row.get("指数名称", "")),
+                    "date": str(row.get("发布日期", "")),
+                    "close_index": safe_float(row.get("收盘指数"), 2),
+                    "change_pct": safe_float(row.get("涨跌幅"), 2),
+                    "turnover_rate": safe_float(row.get("换手率"), 2),
+                    "pe_ttm": safe_float(row.get("市盈率"), 2),
+                    "pb": safe_float(row.get("市净率"), 2),
+                    "volume_yi_gu": safe_float(row.get("成交量"), 2),
+                    "avg_price": safe_float(row.get("均价"), 2),
+                    "turnover_pct": safe_float(row.get("成交额占比"), 2),
+                    "circulating_market_cap_yi": safe_float(row.get("流通市值"), 2),
+                    "avg_circulating_market_cap_yi": safe_float(row.get("平均流通市值"), 2),
+                    "dividend_yield_pct": safe_float(row.get("股息率"), 2),
+                }
+            )
+
+        # 按涨跌幅排序（降序），方便日报使用
+        industries_sorted = sorted(
+            industries, key=lambda x: x.get("change_pct") or 0, reverse=True
+        )
+
+        return {
+            "status": "success",
+            "source": "申万宏源研究 index_analysis_daily_sw",
+            "requested_date": str(start_date),
+            "actual_date": str(found_date),
+            "count": len(industries_sorted),
+            "industries": industries_sorted,
+        }
+    except Exception as exc:
+        return {
+            "status": "error",
+            "requested_date": str(pd.Timestamp(as_of_date).normalize().date()),
+            "message": str(exc),
+        }
+
+
 def build_relevant_etf_daily(as_of_date, core_industry_etf_daily):
     core_by_code = {item["code"]: item for item in core_industry_etf_daily}
     results = []
 
     for code, meta in HOLDING_RELEVANT_ETFS.items():
-        theme = CORE_INDUSTRY_ETFS.get(code, {}).get("theme", "未知主题")
+        theme = meta.get("theme") or CORE_INDUSTRY_ETFS.get(code, {}).get("theme", "未知主题")
         base = core_by_code.get(code) or get_single_etf_daily(code, theme, as_of_date)
         item = dict(base)
         item["related_funds"] = meta["related_funds"]
@@ -899,6 +979,7 @@ def build_payload(as_of_date, holdings_file):
         "northbound_daily_raw": get_northbound_daily_raw(as_of_date),
         "northbound_weekly_summary": get_northbound_weekly_summary(as_of_date=as_of_date),
         "core_industry_etf_daily": core_industry_etf_daily,
+        "sw_l2_industry_daily": get_sw_l2_industry_daily(as_of_date),
         "relevant_etf_daily": build_relevant_etf_daily(as_of_date, core_industry_etf_daily),
         "fund_official_navs": fund_official_navs,
         "holding_valuation_snapshot": holding_valuation_snapshot,
