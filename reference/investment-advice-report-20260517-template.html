@@ -76,7 +76,7 @@
       .action-column p { margin: 0; color: #cbd5e1; font-size: 13px; line-height: 1.7; }
       /* 主体布局 */
       .layout { display: grid; grid-template-columns: 220px minmax(0,1fr); gap: 20px; margin-top: 24px; align-items: start; }
-      .toc, .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+      .toc, .panel { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: visible; }
       .toc { position: sticky; top: 20px; padding: 16px; }
       .toc h2 { margin: 0 0 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); padding-bottom: 8px; border-bottom: 1px solid var(--line); }
       .toc a { display: flex; align-items: center; gap: 6px; padding: 7px 10px; border-radius: var(--radius-sm); color: var(--muted); text-decoration: none; font-size: 13px; transition: background 0.15s, color 0.15s; margin-bottom: 1px; }
@@ -88,7 +88,7 @@
       .toc a:not(.toc-sub) .n { background: var(--accent); color: #fff; }
       /* 基金悬浮卡片 */
       .fund-ref { position: relative; display: inline-flex; align-items: baseline; color: var(--accent); font-weight: 700; cursor: pointer; text-decoration: underline dotted rgba(124,58,237,0.4); text-underline-offset: 3px; }
-      .fund-card { position: absolute; left: 0; top: auto; bottom: calc(100% + 10px); width: 220px; padding: 12px 13px; border: 1px solid rgba(124,58,237,0.18); border-radius: 14px; background: rgba(255,252,247,0.98); box-shadow: 0 16px 34px rgba(80,56,36,0.16); opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity 0.16s ease, transform 0.16s ease; z-index: 30; }
+      .fund-card { position: absolute; left: 0; top: auto; bottom: calc(100% + 10px); width: 220px; padding: 12px 13px; border: 1px solid rgba(124,58,237,0.18); border-radius: 14px; background: rgba(255,252,247,0.98); box-shadow: 0 16px 34px rgba(80,56,36,0.16); opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity 0.16s ease, transform 0.16s ease; z-index: 9999; }
       .fund-ref:hover .fund-card, .fund-ref:focus-visible .fund-card { opacity: 1; transform: translateY(0); }
       .fund-card-name { display: block; margin-bottom: 2px; font-size: 13px; font-weight: 700; color: var(--ink); }
       .fund-card-code { display: block; margin-bottom: 10px; font-size: 11px; color: var(--muted); }
@@ -129,7 +129,7 @@
       .mini-card h4 { margin: 0 0 10px; font-size: 15px; font-weight: 700; color: var(--ink); }
       /* 决策卡片 */
       .decision-list { display: grid; gap: 14px; }
-      .decision-item { border-radius: var(--radius-md); background: #fff; box-shadow: var(--shadow-sm); position: relative; transition: box-shadow 0.25s ease, transform 0.25s ease; overflow: hidden; }
+      .decision-item { border-radius: var(--radius-md); background: #fff; box-shadow: var(--shadow-sm); position: relative; transition: box-shadow 0.25s ease, transform 0.25s ease; overflow: visible; }
       .decision-item:hover { box-shadow: var(--shadow-lg); transform: translateY(-3px); }
       .decision-item::before { content: ''; display: block; position: absolute; top: 0; left: 0; right: 0; height: 4px; border-radius: var(--radius-md) var(--radius-md) 0 0; }
       .decision-item:nth-child(1)::before { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
@@ -314,44 +314,20 @@
               </div>
             </div>
 
-            <h3>宽基ETF与申万二级行业总览</h3>
-            <p class="muted">以下表格展示宽基ETF走势及申万二级行业涨跌幅排行。宽基ETF用于判断市场整体方向，申万二级行业用于判断细分板块强弱。数据来源：sw_l2_industry_daily，共约131个行业。</p>
+            <h3>已获取 ETF 走向总览</h3>
+            <p class="muted">以下表格用于集中展示本轮已抓到的核心行业 ETF 与持仓映射 ETF 走向。若两组 ETF 有重复代码，应先去重后再输出，避免重复展示。</p>
             <div class="table-wrap">
               <table class="etf-overview">
                 <thead>
                   <tr>
                     <th>ETF(代码)</th>
-                    <th>类型</th>
+                    <th>来源</th>
                     <th>前一交易日涨跌幅</th>
                     <th>对应持仓 / 备注</th>
                   </tr>
                 </thead>
                 <tbody>
                   {{etf_trend_rows}}
-                </tbody>
-              </table>
-            </div>
-
-            <h4>申万二级行业涨幅前10</h4>
-            <div class="table-wrap">
-              <table class="etf-overview">
-                <thead>
-                  <tr><th>行业</th><th>涨跌幅</th><th>PE(TTM)</th><th>PB</th><th>股息率</th><th>流通市值(亿)</th></tr>
-                </thead>
-                <tbody>
-                  {{sw_l2_top10_rows}}
-                </tbody>
-              </table>
-            </div>
-
-            <h4>申万二级行业跌幅前10</h4>
-            <div class="table-wrap">
-              <table class="etf-overview">
-                <thead>
-                  <tr><th>行业</th><th>涨跌幅</th><th>PE(TTM)</th><th>PB</th><th>股息率</th><th>流通市值(亿)</th></tr>
-                </thead>
-                <tbody>
-                  {{sw_l2_bottom10_rows}}
                 </tbody>
               </table>
             </div>
