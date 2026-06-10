@@ -5,7 +5,7 @@ description: 持仓监控与量化调仓建议系统。面向多持仓组合，�
 
 > ⚠️ **免责声明**：本工具仅供个人学习和信息整理使用，所有分析内容均不构成任何投资建议。投资有风险，入市需谨慎，请依据自身判断做出投资决策。
 
-> 📌 **书写规范**：所有报告、预测、验证表格中提及基金时，必须写成“基金名称(代码)”。禁止只写代码，禁止把代码写在名称前面。
+> 📌 **书写规范**：所有报告、预测、验证表格中提及基金时，必须写成"基金名称(代码)"。禁止只写代码，禁止把代码写在名称前面。
 
 > 🚫 **事实纪律（最高优先级，不得违反）**：
 > 1. 只能引用实际搜索、抓取或归档到本地的信息。
@@ -51,7 +51,7 @@ HTML 投资建议报告的唯一结构规范与唯一页面骨架。两者必须
 | 画像约束前    | `投资者行动/投资者画像.md`                                                                                                                                                           | 黑名单、风险偏好、工具边界                                |
 | 搜索前      | [reference/archiving.md](reference/archiving.md)                                                                                                                           | 当日归档目录、单条摘要字段、去重规则                           |
 | 搜索阶段     | [reference/search-strategy.md](reference/search-strategy.md)                                                                                                               | 以`finance_news.json`为初始轮素材，额外再加上网络搜到的素材归档到本地 |
-| 定量数据前    | `scripts/fetch_market_momentum.py`                                                                                                                                         | 前一交易日官方净值、宽基ETF收盘、申万二级行业指数、北向单日、持仓快照                   |
+| 定量数据前    | `scripts/fetch_market_momentum.py`                                                                                                                                         | 前一交易日官方净值、宽基ETF收盘、申万二级行业指数、北向单日、持仓快照                  |
 | 历史读取前    | [reference/historical-data.md](reference/historical-data.md)                                                                                                               | 历史 summary 提取、最近可比较基准读取、持仓变化对比               |
 | 预测前      | [reference/prediction-verification.md](reference/prediction-verification.md)                                                                                               | 历史预测验证、信息充分性检查                               |
 | HTML 输出前 | [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) + `reference/investment-advice-report-20260517-template.html` | 必须基于模板文件填充出的完整 HTML 页面，禁止自定义另一套页面骨架 |
@@ -156,7 +156,32 @@ python3 skills/investment-news-analysis/scripts/fetch_market_momentum.py --date 
 
 如需逐基金动作细化，写法以日报模板第八章和 HTML 指南第四章为准，不得另起一套字段体系。
 
-补充：逐基金动作里的 `触发价格线 / 什么时候动作` 默认按持仓成本锚定；如果成本没变，就写“更接近既有止盈线”，不要把止盈线跟着最新净值一起上调。只有成本变化或明确策略重估时，才允许改线。
+补充：逐基金动作里的 `触发价格线 / 什么时候动作` 默认按持仓成本锚定；如果成本没变，就写"更接近既有止盈线"，不要把止盈线跟着最新净值一起上调。只有成本变化或明确策略重估时，才允许改线。
+
+## 常见陷阱
+
+### market_momentum 数据结构
+
+`fetch_market_momentum.py` 输出的 JSON 有几个容易踩的字段名坑：
+
+1. **基金净值**：字段是 `official_nav`，不是 `nav`。`fund_official_navs[]` 每个元素含 `code`、`name`、`official_nav`、`nav_date`。
+2. **申万二级行业**：数据嵌套在 `sw_l2_industry_daily.industries[]`，不是 `sw_l2_industry_daily` 直接是数组。行业名字段是 `index_name`，不是 `industry_name`。可用字段：`index_code`、`index_name`、`date`、`change_pct`、`pe_ttm`、`pb`、`dividend_yield_pct`、`circulating_market_cap_yi` 等。
+3. **北向资金**：`northbound_weekly_summary.daily_net_flow[].net_deal_amt_raw` 单位是万元，需除以 100 换算为亿元。`total_net_in_yi_if_raw_unit_is_million` 字段名虽含 "million" 但实际已换算为亿元。
+
+### 网络搜索补充的可靠性
+
+用 delegate_task 子智能体搜索 A 股行情时，返回的涨跌方向和幅度可能与脚本实际数据严重矛盾（例如子智能体声称"三大指数收跌"，实际是大反弹日）。**脚本抓取的 market_momentum 数据为唯一可信基准**，子智能体网络搜索结果只能用于补充新闻叙事和政策信息，不得用于替代或覆盖脚本数据。
+
+### HTML 报告生成工作流
+
+生成 HTML 报告时推荐两步法：
+
+1. **先在 execute_code 中完成所有数据准备**：解析 market_momentum JSON、计算持仓金额/占比、构建 fund_cards_json 数组、整理每只基金的决策卡片数据。这一步确保数据在主智能体上下文中经过验证。
+2. **再委托子智能体填充模板**：把完整的模板路径、所有基金数据、ETF 数据、章节内容打包传给 delegate_task，让子智能体读取模板并写入 HTML。这样避免子智能体自行解析数据时出错。
+
+### macOS 路径与 TCC 权限
+
+项目根目录为 `~/handbook/make-little-money/`。`~/Documents/work/handbook/` 旧路径受 macOS TCC Full Disk Access 限制，脚本输出和文件读写均不可用。所有路径必须指向 `~/handbook/`。
 
 ## 每日 Summary 输出要求
 
@@ -171,7 +196,7 @@ python3 skills/investment-news-analysis/scripts/fetch_market_momentum.py --date 
 1. 核心指标表必须包含 `持有份额` 和 `当前持有金额`。
 2. 如检测到份额变化，必须写 `持仓变化检测`。
 3. `复盘与风险雷达` 必须服务动作判断，不能只是前文重复。
-4. `今日关注要点` 必须面向分析日当天，不写成机械的“明日关注”。
+4. `今日关注要点` 必须面向分析日当天，不写成机械的"明日关注"。
 5. 数据附录必须写出 `item_summaries_count`、主要 raw_data 文件名、关键缺口。
 
 ## 投资建议 HTML 输出要求
@@ -182,22 +207,22 @@ python3 skills/investment-news-analysis/scripts/fetch_market_momentum.py --date 
 
 HTML 规则以 [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) 和 `reference/investment-advice-report-20260517-template.html` 为准，两者缺一不可。
 
-硬约束：每次生成 HTML 时，必须直接复用 `reference/investment-advice-report-20260517-template.html` 作为页面骨架，只允许填充当日内容、数据和 `fund_cards_json`。禁止自行设计另一套 HTML / CSS / 章节结构后再声称“符合模板精神”。
+硬约束：每次生成 HTML 时，必须直接复用 `reference/investment-advice-report-20260517-template.html` 作为页面骨架，只允许填充当日内容、数据和 `fund_cards_json`。禁止自行设计另一套 HTML / CSS / 章节结构后再声称"符合模板精神"。
 
 这里只保留最低要求：
 
 1. summary 只生成 Markdown，不生成 HTML。
 2. 投资建议正式归档只认 HTML 页面。
-3. 第二章必须先解决“今天先看什么”。
+3. 第二章必须先解决"今天先看什么"。
 4. 第四章必须一只基金一张卡片。
 5. 第七章必须保留固定摘要表供后续机器解析。
 6. 基金名单只能来自 `投资者行动/持仓情况.md`，不得靠正文手写回忆补全。
 7. 交付前必须逐一对账：目录子链接数、第四章基金卡片数、第七章摘要表行数，三者都必须与当前持仓基金数量一致。
-8. 交付前必须逐一对账基金名称：目录、第四章卡片标题、第七章摘要表第一列，必须全部使用与持仓文件一致的“基金名称(代码)”全称。
+8. 交付前必须逐一对账基金名称：目录、第四章卡片标题、第七章摘要表第一列，必须全部使用与持仓文件一致的"基金名称(代码)"全称。
 9. 必须使用 `investment-advice-report-20260517-template.html`，并填充 `fund_cards_json`，让正文基金名称自动挂载悬浮卡片；悬浮卡片最少包含净值、总金额、占比三项。
 10. HTML 不是上一日页面的改写版；第二章到第六章必须显式体现当日新增事实，而不是只复述上一日结论。
-11. 当数据基准日与上一日报告相同，HTML 必须明确分开写“今天沿用的静态数据”与“今天新增的新闻 / 风险 / 反向证据”，不得混写成连续叙事。
-12. 第二章必须落出当日新增 `item_summaries` 的主要锚点；第五章必须写清“今日新增验证样本数”，禁止沿用上一日验证口径冒充今日结果。
+11. 当数据基准日与上一日报告相同，HTML 必须明确分开写"今天沿用的静态数据"与"今天新增的新闻 / 风险 / 反向证据"，不得混写成连续叙事。
+12. 第二章必须落出当日新增 `item_summaries` 的主要锚点；第五章必须写清"今日新增验证样本数"，禁止沿用上一日验证口径冒充今日结果。
 13. 若最终 HTML 不是从 `reference/investment-advice-report-20260517-template.html` 直接填充出来，而是另写的一套页面结构，即使内容正确，也视为交付失败。
 
 ### HTML 交付前强制校验
@@ -207,7 +232,7 @@ HTML 生成完成后，未通过以下校验不得交付：
 1. `持仓情况.md` 中每一只当前持仓基金，都在目录、第四章和第七章各出现且只出现一次。
 2. 第四章基金卡片数必须等于当前持仓数，禁止少卡、并卡、漏卡。
 3. 第七章摘要表基金行数必须等于当前持仓数，禁止沿用上一版摘要表。
-4. 若启用模板悬浮卡片，fund_cards_json 条数必须等于当前持仓数，且 `full` 字段必须与持仓文件中的“基金名称(代码)”完全一致。
+4. 若启用模板悬浮卡片，fund_cards_json 条数必须等于当前持仓数，且 `full` 字段必须与持仓文件中的"基金名称(代码)"完全一致。
 5. 若任何一项数量或名称对不上，优先修正 HTML 和数据映射，不得带着缺口继续输出结论。
 6. 若第二章到第六章读起来仍像上一日 summary 的续写版，视为交付失败；必须回到当日 summary 和 item_summaries 重新展开当天新增内容。
 7. 若页面骨架、章节结构、悬浮卡片注入方式明显不是 `reference/investment-advice-report-20260517-template.html` 这一套，视为交付失败；必须回到模板文件重新生成。
@@ -238,6 +263,7 @@ HTML 生成完成后，未通过以下校验不得交付：
 - [reference/nav-analysis.md](reference/nav-analysis.md) - 净值分析与触发线辅助方法
 - [reference/directory-structure.md](reference/directory-structure.md) - 目录结构
 - [reference/investment-advice-report-20260517-guide.md](reference/investment-advice-report-20260517-guide.md) - HTML 说明
+- [reference/market-momentum-data-structure.md](reference/market-momentum-data-structure.md) - market_momentum JSON 字段名备忘
 
 ## 日常操作顺序
 
@@ -253,6 +279,6 @@ HTML 生成完成后，未通过以下校验不得交付：
 
 ---
 
-**版本**：v4.2  
-**最后更新**：2026-05-27  
+**版本**：v4.3  
+**最后更新**：2026-06-10  
 **维护者**：NagaResst
