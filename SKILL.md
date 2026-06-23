@@ -100,6 +100,13 @@ HTML 投资建议报告的唯一结构规范与唯一页面骨架。两者必须
 python3 skills/investment-news-analysis/scripts/fetch_market_momentum.py --date YYYY-MM-DD --output 投资新闻归档/YYYY-MM/YYYY-MM-DD/raw_data/market_momentum_YYYY-MM-DD.json
 ```
 
+执行上面命令后，脚本会在同一 `raw_data/` 目录**同时写出**：
+
+- `market_momentum_YYYY-MM-DD.json`
+- `analysis_snapshot_YYYY-MM-DD.json`
+
+前者是市场与净值主数据，后者是给 `holding-adjustment` 和后续仓位诊断使用的持仓快照补充层；两者必须视为同一次生成链的配套产物。
+
 ### C. 准备当天 `finance_news.json`
 
 找到当天目录下已经有：

@@ -202,12 +202,13 @@ def find_previous_advice_report(as_of_date):
 
 def extract_report_holdings(report_path):
     text = Path(report_path).read_text(encoding="utf-8")
-    pattern = re.compile(
-        r'\{\s*full:\s*"(?P<full>[^"]+)"\s*,\s*name:\s*"(?P<name>[^"]+)"\s*,\s*code:\s*"(?P<code>\d+)"\s*,\s*nav:\s*"(?P<nav>[^"]+)"\s*,\s*amount:\s*"(?P<amount>[^"]+)"\s*,\s*weight:\s*"(?P<weight>[^"]+)"\s*\}'
-    )
     results = []
 
-    for match in pattern.finditer(text):
+    legacy_pattern = re.compile(
+        r'\{\s*full:\s*"(?P<full>[^"]+)"\s*,\s*name:\s*"(?P<name>[^"]+)"\s*,\s*code:\s*"(?P<code>\d+)"\s*,\s*nav:\s*"(?P<nav>[^"]+)"\s*,\s*amount:\s*"(?P<amount>[^"]+)"\s*,\s*weight:\s*"(?P<weight>[^"]+)"\s*\}'
+    )
+
+    for match in legacy_pattern.finditer(text):
         nav = safe_float(match.group("nav"), 4)
         amount = normalize_amount_text(match.group("amount"))
         shares = None
@@ -221,6 +222,36 @@ def extract_report_holdings(report_path):
                 "report_nav": nav,
                 "report_amount": amount,
                 "report_weight": match.group("weight"),
+                "shares": shares,
+            }
+        )
+
+    if results:
+        return results
+
+    array_match = re.search(r'const\s+funds\s*=\s*(\[.*?\]);', text, re.S)
+    if not array_match:
+        return results
+
+    try:
+        payload = json.loads(array_match.group(1))
+    except json.JSONDecodeError:
+        return results
+
+    for item in payload:
+        nav = safe_float(item.get("nav"), 4)
+        amount = normalize_amount_text(item.get("amount"))
+        shares = None
+        if nav not in (None, 0) and amount is not None:
+            shares = round(amount / nav, 2)
+        results.append(
+            {
+                "full": item.get("full"),
+                "name": item.get("name"),
+                "code": item.get("code"),
+                "report_nav": nav,
+                "report_amount": amount,
+                "report_weight": item.get("weight"),
                 "shares": shares,
             }
         )
@@ -358,6 +389,100 @@ def build_holding_valuation_snapshot(holdings, fund_navs):
         "total_holding_amount": total_amount,
         "holdings": results,
     }
+
+
+def build_analysis_snapshot(payload):
+    holdings_source = payload.get("holdings_source")
+    valuation = payload.get("holding_valuation_snapshot") or {}
+    valuation_rows = valuation.get("holdings") or []
+    total_holding_amount = valuation.get("total_holding_amount")
+    change_summary = payload.get("holdings_change_vs_previous_report") or {}
+    change_rows = change_summary.get("changes") or []
+    relevant_etf_daily = payload.get("relevant_etf_daily") or []
+
+    changes_by_code = {item.get("code"): item for item in change_rows if item.get("code")}
+    etf_by_full = {}
+    for item in relevant_etf_daily:
+        if item.get("status") != "success":
+            continue
+        for related_full in item.get("related_funds") or []:
+            etf_by_full[related_full] = item
+
+    holdings = []
+    for item in valuation_rows:
+        code = item.get("code")
+        name = item.get("name")
+        if not code or not name:
+            continue
+        full = f"{name}({code})"
+        change = changes_by_code.get(code) or {}
+        related_etf = etf_by_full.get(full) or {}
+        holdings.append(
+            {
+                "code": code,
+                "name": name,
+                "full": full,
+                "shares": item.get("shares"),
+                "cost": item.get("cost"),
+                "official_nav": item.get("official_nav"),
+                "nav_date": item.get("nav_date"),
+                "holding_amount": item.get("holding_amount"),
+                "holding_cost_amount": item.get("cost_amount"),
+                "floating_pnl_amount": item.get("floating_pnl_amount"),
+                "floating_pnl_pct": item.get("floating_pnl_pct"),
+                "holding_weight_pct": item.get("holding_weight_pct"),
+                "share_change_type": change.get("change_type"),
+                "previous_shares": change.get("previous_shares"),
+                "share_delta": change.get("share_delta"),
+                "related_etf": related_etf.get("code"),
+                "related_etf_name": related_etf.get("theme"),
+                "related_etf_change_pct": related_etf.get("change_pct"),
+            }
+        )
+
+    total_cost_amount = 0.0
+    total_floating_pnl_amount = 0.0
+    has_cost_amount = False
+    has_floating_amount = False
+    for item in holdings:
+        holding_cost_amount = item.get("holding_cost_amount")
+        floating_pnl_amount = item.get("floating_pnl_amount")
+        if holding_cost_amount is not None:
+            total_cost_amount += holding_cost_amount
+            has_cost_amount = True
+        if floating_pnl_amount is not None:
+            total_floating_pnl_amount += floating_pnl_amount
+            has_floating_amount = True
+
+    total_cost_amount = round(total_cost_amount, 2) if has_cost_amount else None
+    total_floating_pnl_amount = round(total_floating_pnl_amount, 2) if has_floating_amount else None
+    total_floating_pnl_pct = None
+    if total_cost_amount not in (None, 0) and total_floating_pnl_amount is not None:
+        total_floating_pnl_pct = round(total_floating_pnl_amount / total_cost_amount * 100, 2)
+
+    return {
+        "generated_at": payload.get("generated_at"),
+        "as_of_date": payload.get("as_of_date"),
+        "day_level_cutoff_date": payload.get("day_level_cutoff_date"),
+        "holdings_source": holdings_source,
+        "holdings_count": len(holdings),
+        "changed_funds_count": change_summary.get("changed_funds_count", 0),
+        "previous_report_date": change_summary.get("previous_report_date"),
+        "previous_snapshot_path": change_summary.get("previous_snapshot_path"),
+        "total_holding_amount": total_holding_amount,
+        "total_cost_amount": total_cost_amount,
+        "total_floating_pnl_amount": total_floating_pnl_amount,
+        "total_floating_pnl_pct": total_floating_pnl_pct,
+        "holdings": holdings,
+    }
+
+
+def infer_analysis_snapshot_output_path(market_momentum_output_path):
+    output_path = Path(market_momentum_output_path)
+    name = output_path.name
+    if not name.startswith("market_momentum_") or not name.endswith(".json"):
+        return output_path.with_name("analysis_snapshot.json")
+    return output_path.with_name(name.replace("market_momentum_", "analysis_snapshot_", 1))
 
 
 def build_holdings_change_summary(current_holdings, previous_context, fund_navs):
@@ -991,12 +1116,17 @@ def main():
     args = parse_args()
     payload = build_payload(as_of_date=args.date, holdings_file=args.holdings_file)
     serialized = json.dumps(payload, ensure_ascii=False, indent=2)
+    analysis_snapshot = build_analysis_snapshot(payload)
+    analysis_snapshot_serialized = json.dumps(analysis_snapshot, ensure_ascii=False, indent=2)
 
     if args.output:
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(serialized + "\n", encoding="utf-8")
+        analysis_snapshot_output_path = infer_analysis_snapshot_output_path(output_path)
+        analysis_snapshot_output_path.write_text(analysis_snapshot_serialized + "\n", encoding="utf-8")
         print(f"written: {output_path}")
+        print(f"written: {analysis_snapshot_output_path}")
     else:
         print(serialized)
 
